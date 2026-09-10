@@ -13,6 +13,9 @@ import type { AiProvider } from './types'
 export const AI_PROVIDER_DEFAULT_MODEL: Record<AiProvider, string> = {
   openai: 'gpt-5.4-mini',
   anthropic: 'claude-haiku-4-5-20251001',
+  // Google's free tier (no credit card) — see ai.google.dev/pricing.
+  // Model IDs churn fast on Google's side too; editable in the UI.
+  gemini: 'gemini-3.6-flash',
 }
 
 /**
