@@ -17,8 +17,13 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { useTranslations } from 'next-intl';
+import {
+  PASSWORD_MIN_LENGTH,
+  hasDigit,
+  hasUppercase,
+} from '@/lib/auth/password-policy';
 
-const MIN_PASSWORD = 8;
+const MIN_PASSWORD = PASSWORD_MIN_LENGTH;
 
 export function PasswordForm() {
   const t = useTranslations('Settings.profile');
@@ -39,6 +44,10 @@ export function PasswordForm() {
     }
     if (next.length < MIN_PASSWORD) {
       setConfirmError(t('passwordTooShort', { min: MIN_PASSWORD }));
+      return;
+    }
+    if (!hasUppercase(next) || !hasDigit(next)) {
+      setConfirmError(t('passwordTooWeak'));
       return;
     }
     if (next !== confirm) {
