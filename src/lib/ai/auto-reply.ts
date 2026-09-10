@@ -39,6 +39,23 @@ interface DispatchArgs {
  * reacting to a customer message that just landed — so no separate
  * window check is needed.
  */
+// TEMP DEBUG — remove after diagnosing the silent auto-reply issue.
+async function trace(
+  db: ReturnType<typeof supabaseAdmin>,
+  accountId: string,
+  conversationId: string,
+  step: string,
+  detail?: string,
+): Promise<void> {
+  try {
+    await db
+      .from('debug_ai_trace')
+      .insert({ account_id: accountId, conversation_id: conversationId, step, detail: detail ?? null })
+  } catch {
+    // best-effort, never throw from tracing
+  }
+}
+
 export async function dispatchInboundToAiReply(
   args: DispatchArgs,
 ): Promise<void> {
@@ -46,9 +63,11 @@ export async function dispatchInboundToAiReply(
 
   try {
     const db = supabaseAdmin()
+    await trace(db, accountId, conversationId, 'enter')
 
     const config = await loadAiConfig(db, accountId)
-    if (!config || !config.autoReplyEnabled) return
+    await trace(db, accountId, conversationId, 'config_loaded', JSON.stringify({ hasConfig: !!config, autoReplyEnabled: config?.autoReplyEnabled, provider: config?.provider, model: config?.model }))
+    if (!config || !config.autoReplyEnabled) { await trace(db, accountId, conversationId, 'exit:no_config'); return }
 
     // Deterministic, user-configured responders win over the LLM — the
     // caller already excludes messages a Flow consumed. Message-level
@@ -65,22 +84,23 @@ export async function dispatchInboundToAiReply(
       .eq('is_active', true)
       .in('trigger_type', ['new_message_received', 'keyword_match'])
       .limit(1)
-    if (autoResponders && autoResponders.length > 0) return
+    if (autoResponders && autoResponders.length > 0) { await trace(db, accountId, conversationId, 'exit:auto_responder_active'); return }
 
     const { data: conv, error: convErr } = await db
       .from('conversations')
       .select('assigned_agent_id, ai_autoreply_disabled, ai_reply_count')
       .eq('id', conversationId)
       .maybeSingle()
-    if (convErr || !conv) return
-    if (conv.assigned_agent_id) return // a human owns this thread
-    if (conv.ai_autoreply_disabled) return // handed off / turned off here
+    if (convErr || !conv) { await trace(db, accountId, conversationId, 'exit:conv_fetch_failed', JSON.stringify({ convErr })); return }
+    if (conv.assigned_agent_id) { await trace(db, accountId, conversationId, 'exit:human_assigned'); return } // a human owns this thread
+    if (conv.ai_autoreply_disabled) { await trace(db, accountId, conversationId, 'exit:autoreply_disabled_on_conv'); return } // handed off / turned off here
     // Cheap early-out; the authoritative cap check is the atomic claim
     // below (this read can race a concurrent inbound).
-    if (conv.ai_reply_count >= config.autoReplyMaxPerConversation) return
+    if (conv.ai_reply_count >= config.autoReplyMaxPerConversation) { await trace(db, accountId, conversationId, 'exit:cap_reached'); return }
 
     const messages = await buildConversationContext(db, conversationId)
-    if (messages.length === 0) return
+    await trace(db, accountId, conversationId, 'context_built', JSON.stringify({ count: messages.length }))
+    if (messages.length === 0) { await trace(db, accountId, conversationId, 'exit:no_messages'); return }
 
     // Account-wide throttle on the shared BYO key. The per-conversation
     // cap bounds one thread; this bounds a burst across many threads (a
@@ -92,6 +112,7 @@ export async function dispatchInboundToAiReply(
       RATE_LIMITS.aiAutoReplyAccount,
     )
     if (!acctLimit.success) {
+      await trace(db, accountId, conversationId, 'exit:rate_limited')
       console.warn(
         `[ai auto-reply] account ${accountId} hit the per-account rate limit — skipping this inbound.`,
       )
@@ -112,11 +133,13 @@ export async function dispatchInboundToAiReply(
       knowledge,
     })
 
+    await trace(db, accountId, conversationId, 'before_generate')
     const { text, handoff, usage } = await generateReply({
       config,
       systemPrompt,
       messages,
     })
+    await trace(db, accountId, conversationId, 'after_generate', JSON.stringify({ handoff, textLen: text?.length ?? 0 }))
 
     // Record token spend on the account's BYO key. Fire-and-forget so it
     // never adds latency to the customer-facing send: `logAiUsage`
@@ -189,5 +212,17 @@ export async function dispatchInboundToAiReply(
     })
   } catch (err) {
     console.error('[ai auto-reply] dispatch failed:', err)
+    try {
+      await supabaseAdmin()
+        .from('debug_ai_trace')
+        .insert({
+          account_id: accountId,
+          conversation_id: conversationId,
+          step: 'exit:exception',
+          detail: err instanceof Error ? `${err.name}: ${err.message}` : JSON.stringify(err),
+        })
+    } catch {
+      // best-effort
+    }
   }
 }
