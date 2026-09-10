@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,19 +22,17 @@ import {
   hasUppercase,
 } from "@/lib/auth/password-policy";
 
-const APP_NAME = "Agent Free WhatsApp";
-
 // Small wordmark shown above the auth card so the app's identity is
 // visible before a person signs in or creates an account, not just
 // after (it previously only appeared as small secondary text).
-function AppBrand() {
+function AppBrand({ appName }: { appName: string }) {
   return (
     <div className="mb-6 flex items-center gap-2">
       <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
         <MessageSquare className="h-5 w-5 text-primary" />
       </span>
       <span className="text-lg font-semibold tracking-tight text-foreground">
-        {APP_NAME}
+        {appName}
       </span>
     </div>
   );
@@ -50,6 +49,7 @@ export default function SignupPage() {
 }
 
 function SignupPageInner() {
+  const t = useTranslations("SignupPage");
   const searchParams = useSearchParams();
   // When the user lands here from `/join/<token>` we carry the
   // invite token in the query so it survives the signup → email
@@ -72,19 +72,17 @@ function SignupPageInner() {
     setError(null);
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("errorPasswordMismatch"));
       return;
     }
 
     if (password.length < PASSWORD_MIN_LENGTH) {
-      setError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+      setError(t("errorPasswordTooShort", { min: PASSWORD_MIN_LENGTH }));
       return;
     }
 
     if (!hasUppercase(password) || !hasDigit(password)) {
-      setError(
-        "Password must include at least one uppercase letter and one number",
-      );
+      setError(t("errorPasswordTooWeak"));
       return;
     }
 
@@ -126,9 +124,7 @@ function SignupPageInner() {
     // signup, which looks like (but isn't) a second account being
     // created.
     if (data.user && data.user.identities && data.user.identities.length === 0) {
-      setError(
-        "This email is already registered. Try signing in instead.",
-      );
+      setError(t("errorEmailTaken"));
       setLoading(false);
       return;
     }
@@ -140,19 +136,22 @@ function SignupPageInner() {
   if (success) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-        <AppBrand />
+        <AppBrand appName={t("appName")} />
         <Card className="w-full max-w-md border-border bg-card">
           <CardHeader className="items-center text-center">
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
               <CheckCircle className="h-6 w-6 text-primary" />
             </div>
             <CardTitle className="text-xl text-foreground">
-              Check your email
+              {t("successTitle")}
             </CardTitle>
             <CardDescription className="text-muted-foreground">
-              We&apos;ve sent a confirmation link to{" "}
-              <span className="text-foreground">{email}</span>. Please check your
-              inbox and click the link to verify your account.
+              {t.rich("successDesc", {
+                em: (chunks) => (
+                  <span className="text-foreground">{chunks}</span>
+                ),
+                email,
+              })}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -167,7 +166,7 @@ function SignupPageInner() {
                 variant="outline"
                 className="w-full border-border text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                Back to sign in
+                {t("backToSignIn")}
               </Button>
             </Link>
           </CardContent>
@@ -178,7 +177,7 @@ function SignupPageInner() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      <AppBrand />
+      <AppBrand appName={t("appName")} />
       <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="items-center text-center">
           <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
@@ -189,12 +188,12 @@ function SignupPageInner() {
             )}
           </div>
           <CardTitle className="text-xl text-foreground">
-            {inviteToken ? "Create account & join" : "Create account"}
+            {inviteToken ? t("titleCreateJoin") : t("titleCreate")}
           </CardTitle>
           <CardDescription className="text-muted-foreground">
             {inviteToken
-              ? "Verify your email, then accept the invitation to join your team."
-              : `Get started with ${APP_NAME}`}
+              ? t("descCreateJoin")
+              : t("descCreate", { appName: t("appName") })}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -207,12 +206,12 @@ function SignupPageInner() {
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="fullName" className="text-muted-foreground">
-                Full name
+                {t("fullNameLabel")}
               </Label>
               <Input
                 id="fullName"
                 type="text"
-                placeholder="John Doe"
+                placeholder={t("fullNamePlaceholder")}
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
@@ -222,12 +221,12 @@ function SignupPageInner() {
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="email" className="text-muted-foreground">
-                Email
+                {t("emailLabel")}
               </Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t("emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -237,12 +236,12 @@ function SignupPageInner() {
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="password" className="text-muted-foreground">
-                Password
+                {t("passwordLabel")}
               </Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="At least 8 characters, 1 uppercase, 1 number"
+                placeholder={t("passwordPlaceholder")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -252,12 +251,12 @@ function SignupPageInner() {
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="confirmPassword" className="text-muted-foreground">
-                Confirm password
+                {t("confirmPasswordLabel")}
               </Label>
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="Repeat your password"
+                placeholder={t("confirmPasswordPlaceholder")}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
@@ -270,12 +269,12 @@ function SignupPageInner() {
               disabled={loading}
               className="mt-2 h-10 w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {loading ? "Creating account..." : "Create account"}
+              {loading ? t("creatingAccount") : t("createAccount")}
             </Button>
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
+            {t("alreadyHaveAccount")}{" "}
             <Link
               href={
                 inviteToken
@@ -284,7 +283,7 @@ function SignupPageInner() {
               }
               className="text-primary hover:text-primary/80"
             >
-              Sign in
+              {t("signIn")}
             </Link>
           </p>
         </CardContent>
