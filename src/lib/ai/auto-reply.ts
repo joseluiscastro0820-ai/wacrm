@@ -84,34 +84,11 @@ export async function dispatchInboundToAiReply(
 ): Promise<void> {
   const { accountId, conversationId, contactId, configOwnerUserId } = args
 
-  // TEMP DEBUG — remove once the intermittent no-reply issue is confirmed fixed.
-  const trace = async (step: string, detail?: unknown) => {
-    try {
-      await supabaseAdmin()
-        .from('debug_ai_trace')
-        .insert({
-          account_id: accountId,
-          conversation_id: conversationId,
-          step,
-          detail: detail !== undefined ? JSON.stringify(detail) : null,
-        })
-    } catch {
-      // best-effort
-    }
-  }
-  await trace('enter')
-
   try {
     const db = supabaseAdmin()
 
     const config = await loadAiConfig(db, accountId)
-    if (!config || !config.autoReplyEnabled) {
-      await trace('gate:no_config_or_disabled', {
-        hasConfig: !!config,
-        autoReplyEnabled: config?.autoReplyEnabled ?? null,
-      })
-      return
-    }
+    if (!config || !config.autoReplyEnabled) return
 
     // Deterministic, user-configured responders win over the LLM — the
     // caller already excludes messages a Flow consumed. Message-level
@@ -128,40 +105,22 @@ export async function dispatchInboundToAiReply(
       .eq('is_active', true)
       .in('trigger_type', ['new_message_received', 'keyword_match'])
       .limit(1)
-    if (autoResponders && autoResponders.length > 0) {
-      await trace('gate:active_automation')
-      return
-    }
+    if (autoResponders && autoResponders.length > 0) return
 
     const { data: conv, error: convErr } = await db
       .from('conversations')
       .select('assigned_agent_id, ai_autoreply_disabled, ai_reply_count')
       .eq('id', conversationId)
       .maybeSingle()
-    if (convErr || !conv) {
-      await trace('gate:conv_err_or_missing', { convErr: convErr?.message ?? null })
-      return
-    }
-    if (conv.assigned_agent_id) {
-      await trace('gate:assigned_agent')
-      return // a human owns this thread
-    }
-    if (conv.ai_autoreply_disabled) {
-      await trace('gate:conv_autoreply_disabled')
-      return // handed off / turned off here
-    }
+    if (convErr || !conv) return
+    if (conv.assigned_agent_id) return // a human owns this thread
+    if (conv.ai_autoreply_disabled) return // handed off / turned off here
     // Cheap early-out; the authoritative cap check is the atomic claim
     // below (this read can race a concurrent inbound).
-    if (conv.ai_reply_count >= config.autoReplyMaxPerConversation) {
-      await trace('gate:reply_cap', { count: conv.ai_reply_count })
-      return
-    }
+    if (conv.ai_reply_count >= config.autoReplyMaxPerConversation) return
 
     const messages = await buildConversationContext(db, conversationId)
-    if (messages.length === 0) {
-      await trace('gate:no_messages')
-      return
-    }
+    if (messages.length === 0) return
 
     // Account-wide throttle on the shared BYO key. The per-conversation
     // cap bounds one thread; this bounds a burst across many threads (a
@@ -176,7 +135,6 @@ export async function dispatchInboundToAiReply(
       console.warn(
         `[ai auto-reply] account ${accountId} hit the per-account rate limit — skipping this inbound.`,
       )
-      await trace('gate:rate_limited', acctLimit)
       return
     }
 
@@ -194,13 +152,11 @@ export async function dispatchInboundToAiReply(
       knowledge,
     })
 
-    await trace('calling_generate')
     const { text, handoff, usage } = await generateReplyWithRetry({
       config,
       systemPrompt,
       messages,
     })
-    await trace('generate_ok', { handoff, textLen: text?.length ?? 0 })
 
     // Record token spend on the account's BYO key. Fire-and-forget so it
     // never adds latency to the customer-facing send: `logAiUsage`
@@ -238,7 +194,6 @@ export async function dispatchInboundToAiReply(
         update.assigned_agent_id = config.handoffAgentId
       }
       await db.from('conversations').update(update).eq('id', conversationId)
-      await trace('exit:handoff_or_empty', { handoff, hasText: !!text })
       return
     }
 
@@ -260,15 +215,10 @@ export async function dispatchInboundToAiReply(
       // service role, or the migration not applied. Log it loudly: a
       // silent return makes "auto-reply never fires" undiagnosable.
       console.error('[ai auto-reply] claim_ai_reply_slot failed:', claimErr)
-      await trace('exit:claim_error', claimErr.message)
       return
     }
-    if (claimed !== true) {
-      await trace('exit:claim_lost_race')
-      return // lost the per-conversation cap race
-    }
+    if (claimed !== true) return // lost the per-conversation cap race
 
-    await trace('sending')
     await engineSendText({
       accountId,
       userId: configOwnerUserId,
@@ -277,13 +227,7 @@ export async function dispatchInboundToAiReply(
       text,
       aiGenerated: true,
     })
-    await trace('exit:sent_ok')
   } catch (err) {
     console.error('[ai auto-reply] dispatch failed:', err)
-    // TEMP DEBUG — remove once the intermittent no-reply issue is confirmed fixed.
-    await trace(
-      'exit:exception',
-      err instanceof Error ? `${err.name}: ${err.message}` : JSON.stringify(err),
-    )
   }
 }
