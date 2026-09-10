@@ -108,7 +108,11 @@ html[data-mode="dark"] {
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  /* Slightly rounder than the old 0.625rem across the whole radius
+   * scale (--radius-sm … --radius-4xl all derive from this) — part of
+   * the softer, more "designed" card/button look from the reference
+   * mockups (Dealstack / Automatic) requested for the theme refresh. */
+  --radius: 0.75rem;
   --sidebar: oklch(0.16 0.01 260);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.22 0.01 260);
@@ -137,7 +141,9 @@ html[data-mode="light"] {
   --chart-3: oklch(0.7 0.06 260);
   --chart-4: oklch(0.8 0.04 260);
   --chart-5: oklch(0.87 0.03 260);
-  --radius: 0.625rem;
+  /* Matches the dark-mode value above so both modes share the same
+   * rounder corner radius from the reference mockups. */
+  --radius: 0.75rem;
   --sidebar: oklch(0.985 0.002 260);
   --sidebar-foreground: oklch(0.21 0.01 260);
   --sidebar-accent: oklch(0.96 0.004 260);
@@ -227,4 +233,52 @@ html[data-theme="rose"] {
   html {
     @apply font-sans;
   }
+}
+
+/* ============================================================
+ * VISUAL REFRESH — dark-mode ambient glow + card glow
+ *
+ * Inspired by the "Dealstack" reference mockup: a soft, colored
+ * radial glow behind the dashboard shell and a faint primary-tinted
+ * halo under cards. Written with the literal `html[data-mode="dark"]`
+ * attribute selector (not Tailwind's `dark:` variant, which is dead
+ * in this app — mode is toggled via `data-mode`, never a `.dark`
+ * class) so this reliably activates in dark mode regardless of that
+ * pre-existing, unrelated issue.
+ * ============================================================ */
+
+html[data-mode="dark"] [data-slot="card"] {
+  box-shadow:
+    0 1px 0 0 oklch(1 0 0 / 0.03) inset,
+    0 8px 24px -12px oklch(from var(--primary) l c h / 0.25);
+}
+
+.ambient-glow {
+  position: relative;
+  isolation: isolate;
+}
+
+.ambient-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(
+      600px circle at 15% 0%,
+      oklch(from var(--primary) l c h / 0.16),
+      transparent 60%
+    ),
+    radial-gradient(
+      500px circle at 100% 20%,
+      oklch(from var(--primary) l c h / 0.1),
+      transparent 55%
+    );
+  transition: opacity 0.2s ease;
+}
+
+html[data-mode="dark"] .ambient-glow::before {
+  opacity: 1;
 }

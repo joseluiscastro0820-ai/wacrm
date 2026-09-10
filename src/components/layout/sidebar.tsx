@@ -83,6 +83,14 @@ interface NavItem {
   labelKey: string;
   icon: typeof LayoutDashboard;
   /**
+   * Full, static Tailwind class string for the item's icon badge.
+   * Kept as a complete literal per item (never built with string
+   * interpolation) so Tailwind's compiler can actually see and keep
+   * these classes — a `` `bg-${color}-500/15` `` template would be
+   * silently dropped at build time.
+   */
+  iconBg: string;
+  /**
    * When true, the nav row renders a small "Beta" chip after the label.
    * Purely informational — doesn't affect routing or access.
    */
@@ -90,19 +98,70 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard },
-  { href: "/inbox", labelKey: "inbox", icon: MessageSquare },
-  { href: "/notifications", labelKey: "notifications", icon: Bell },
-  { href: "/contacts", labelKey: "contacts", icon: Users },
-  { href: "/pipelines", labelKey: "pipelines", icon: GitBranch },
-  { href: "/broadcasts", labelKey: "broadcasts", icon: Radio },
-  { href: "/automations", labelKey: "automations", icon: Zap },
-  { href: "/flows", labelKey: "flows", icon: Workflow, beta: true },
-  { href: "/agents", labelKey: "aiAgents", icon: Bot },
+  {
+    href: "/dashboard",
+    labelKey: "dashboard",
+    icon: LayoutDashboard,
+    iconBg: "bg-violet-500/15 text-violet-400",
+  },
+  {
+    href: "/inbox",
+    labelKey: "inbox",
+    icon: MessageSquare,
+    iconBg: "bg-blue-500/15 text-blue-400",
+  },
+  {
+    href: "/notifications",
+    labelKey: "notifications",
+    icon: Bell,
+    iconBg: "bg-amber-500/15 text-amber-400",
+  },
+  {
+    href: "/contacts",
+    labelKey: "contacts",
+    icon: Users,
+    iconBg: "bg-emerald-500/15 text-emerald-400",
+  },
+  {
+    href: "/pipelines",
+    labelKey: "pipelines",
+    icon: GitBranch,
+    iconBg: "bg-cyan-500/15 text-cyan-400",
+  },
+  {
+    href: "/broadcasts",
+    labelKey: "broadcasts",
+    icon: Radio,
+    iconBg: "bg-pink-500/15 text-pink-400",
+  },
+  {
+    href: "/automations",
+    labelKey: "automations",
+    icon: Zap,
+    iconBg: "bg-orange-500/15 text-orange-400",
+  },
+  {
+    href: "/flows",
+    labelKey: "flows",
+    icon: Workflow,
+    iconBg: "bg-indigo-500/15 text-indigo-400",
+    beta: true,
+  },
+  {
+    href: "/agents",
+    labelKey: "aiAgents",
+    icon: Bot,
+    iconBg: "bg-fuchsia-500/15 text-fuchsia-400",
+  },
 ];
 
 const bottomNavItems = [
-  { href: "/settings", labelKey: "settings", icon: Settings },
+  {
+    href: "/settings",
+    labelKey: "settings",
+    icon: Settings,
+    iconBg: "bg-muted text-muted-foreground",
+  },
 ];
 
 interface SidebarProps {
@@ -229,13 +288,20 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                     href={item.href}
                     className={cn(
                       // Taller on mobile so fingers can hit the row reliably (≥44px).
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
+                      "flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors lg:py-2",
                       isActive
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-primary-soft-2 text-foreground"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
-                    <item.icon className="h-4 w-4" />
+                    <span
+                      className={cn(
+                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                        item.iconBg,
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                    </span>
                     <span className="flex-1">{t(item.labelKey as string)}</span>
                     {item.beta && (
                       <span
@@ -278,13 +344,20 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
+                      "flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors lg:py-2",
                       isActive
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-primary-soft-2 text-foreground"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
-                    <item.icon className="h-4 w-4" />
+                    <span
+                      className={cn(
+                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                        item.iconBg,
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                    </span>
                     {t(item.labelKey as string)}
                   </Link>
                 </li>

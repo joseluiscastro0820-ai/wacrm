@@ -41,7 +41,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    // ambient-glow: soft purple radial glow behind the whole shell in
+    // dark mode only (no-op in light mode) — see globals.css.
+    <div className="ambient-glow flex h-screen overflow-hidden bg-background">
       {/* Reports this tab's online/away presence once we know a user is
           signed in. Headless — renders nothing. */}
       <PresenceHeartbeat />
