@@ -15,6 +15,29 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { MessageSquare, CheckCircle, UsersRound } from "lucide-react";
+import {
+  PASSWORD_MIN_LENGTH,
+  hasDigit,
+  hasUppercase,
+} from "@/lib/auth/password-policy";
+
+const APP_NAME = "Agent Free WhatsApp";
+
+// Small wordmark shown above the auth card so the app's identity is
+// visible before a person signs in or creates an account, not just
+// after (it previously only appeared as small secondary text).
+function AppBrand() {
+  return (
+    <div className="mb-6 flex items-center gap-2">
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+        <MessageSquare className="h-5 w-5 text-primary" />
+      </span>
+      <span className="text-lg font-semibold tracking-tight text-foreground">
+        {APP_NAME}
+      </span>
+    </div>
+  );
+}
 
 // `useSearchParams` opts the component out of static prerendering
 // unless wrapped in Suspense — same pattern as /login.
@@ -53,8 +76,15 @@ function SignupPageInner() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      setError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
+      return;
+    }
+
+    if (!hasUppercase(password) || !hasDigit(password)) {
+      setError(
+        "Password must include at least one uppercase letter and one number",
+      );
       return;
     }
 
@@ -68,7 +98,7 @@ function SignupPageInner() {
       ? `${window.location.origin}/join/${encodeURIComponent(inviteToken)}`
       : undefined;
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -85,13 +115,32 @@ function SignupPageInner() {
       return;
     }
 
+    // Supabase Auth deliberately doesn't return an error when the
+    // email is already registered and confirmed — it returns a
+    // "successful" signup with no error, to avoid letting an
+    // attacker probe which emails have accounts. The documented way
+    // to tell the two cases apart is the returned user's `identities`
+    // array: it comes back empty when no new identity was actually
+    // created. Without this check, someone re-submitting their own
+    // email sees the same "check your email" screen as a real new
+    // signup, which looks like (but isn't) a second account being
+    // created.
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      setError(
+        "This email is already registered. Try signing in instead.",
+      );
+      setLoading(false);
+      return;
+    }
+
     setSuccess(true);
     setLoading(false);
   };
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+        <AppBrand />
         <Card className="w-full max-w-md border-border bg-card">
           <CardHeader className="items-center text-center">
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
@@ -128,7 +177,8 @@ function SignupPageInner() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      <AppBrand />
       <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="items-center text-center">
           <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
@@ -144,7 +194,7 @@ function SignupPageInner() {
           <CardDescription className="text-muted-foreground">
             {inviteToken
               ? "Verify your email, then accept the invitation to join your team."
-              : "Get started with Agent Free WhatsApp"}
+              : `Get started with ${APP_NAME}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -192,7 +242,7 @@ function SignupPageInner() {
               <Input
                 id="password"
                 type="password"
-                placeholder="At least 6 characters"
+                placeholder="At least 8 characters, 1 uppercase, 1 number"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
