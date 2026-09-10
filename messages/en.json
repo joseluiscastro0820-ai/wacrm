@@ -1,5 +1,6 @@
 {
   "LoginPage": {
+    "appName": "Agent Free WhatsApp",
     "titleAccept": "Sign in to accept",
     "titleWelcome": "Welcome back",
     "descAccept": "Sign in and we'll take you to the invitation.",
@@ -1544,6 +1545,7 @@
       "security": "Login & security",
       "appearance": "Appearance",
       "whatsapp": "WhatsApp",
+      "calendar": "Google Calendar",
       "templates": "Templates",
       "quick-replies": "Quick replies",
       "fields": "Fields & tags",
@@ -1585,7 +1587,7 @@
       "profileSavedEmailCheck": "Profile saved — check your email to confirm the address change",
       
       "passwordTitle": "Password",
-      "passwordDesc": "Use at least {min} characters. You will stay signed in on this device after changing it.",
+      "passwordDesc": "Use at least {min} characters, including one uppercase letter and one number. You will stay signed in on this device after changing it.",
       "currentPassword": "Current password",
       "newPassword": "New password",
       "confirmPassword": "Confirm new password",
@@ -1593,6 +1595,7 @@
       "updatePassword": "Update password",
       "cannotChangeNoEmail": "Cannot change password without a current email",
       "passwordTooShort": "Password must be at least {min} characters",
+      "passwordTooWeak": "Password must include at least one uppercase letter and one number",
       "passwordMismatch": "New password and confirmation do not match",
       "currentPasswordIncorrect": "Current password is incorrect",
       "passwordUpdateFailed": "Password update failed: {message}",
@@ -1737,6 +1740,45 @@
       "reindex": "Reindex",
       "reindexTooltip": "Re-embed all documents (e.g. after adding an embeddings key)",
       "loading": "Loading…"
+    },
+    "googleCalendar": {
+      "title": "Google Calendar",
+      "description": "Connect a Google Calendar so the AI assistant can see real availability and suggest appointment times on WhatsApp. It only suggests — someone on your team still creates the actual event.",
+      "notConnectedTitle": "Not connected",
+      "notConnectedDesc": "Connect a Google Calendar to let the assistant offer real appointment times to customers.",
+      "connectButton": "Connect Google Calendar",
+      "connecting": "Redirecting to Google…",
+      "connectedAs": "Connected as {email}",
+      "disconnectButton": "Disconnect",
+      "disconnectConfirm": "Disconnect Google Calendar? The assistant will stop suggesting appointment times.",
+      "disconnectSuccess": "Google Calendar disconnected.",
+      "disconnectFailed": "Failed to disconnect.",
+      "connectedSuccess": "Google Calendar connected.",
+      "errorGeneric": "Could not connect to Google Calendar. Please try again.",
+      "errorAccessDenied": "Google sign-in was cancelled.",
+      "errorMissingConfig": "Google Calendar isn't configured on the server yet — add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET first.",
+      "errorNoRefreshToken": "Google didn't grant lasting access. Remove wacrm's access at myaccount.google.com/permissions, then try connecting again.",
+      "syncErrorBanner": "There's a problem reaching this calendar ({error}). Try disconnecting and reconnecting.",
+      "suggestionsToggle": "Let the assistant suggest appointment times",
+      "suggestionsToggleDesc": "When on, upcoming free slots are added to what the assistant knows, so it can offer them in chat. It never books anything on its own.",
+      "businessHoursTitle": "Business hours",
+      "businessHoursDesc": "The assistant only offers times inside this window, in your calendar's own timezone ({timezone}).",
+      "opens": "Opens",
+      "closes": "Closes",
+      "workingDaysTitle": "Working days",
+      "saveHours": "Save",
+      "saveHoursSuccess": "Business hours saved.",
+      "saveHoursFailed": "Failed to save.",
+      "loadFailed": "Failed to load Google Calendar settings.",
+      "days": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      }
     }
   }
 }
