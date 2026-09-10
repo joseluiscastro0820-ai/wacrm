@@ -220,6 +220,17 @@ export async function POST(request: Request) {
       await processWebhook(body)
     } catch (error) {
       console.error('Error processing webhook:', error)
+      // TEMP DEBUG — remove after diagnosing the silent auto-reply issue.
+      try {
+        await supabaseAdmin()
+          .from('debug_ai_trace')
+          .insert({
+            step: 'webhook:top_level_exception',
+            detail: error instanceof Error ? `${error.name}: ${error.message}\n${error.stack ?? ''}`.slice(0, 4000) : JSON.stringify(error),
+          })
+      } catch (e2) {
+        console.error('[debug trace] insert failed:', e2)
+      }
     }
   })
 
@@ -864,6 +875,18 @@ async function processMessage(
         interactive_reply_id: interactiveReplyId ?? undefined,
       },
     }).catch((err) => console.error('[automations] dispatch failed:', err))
+  }
+
+  // TEMP DEBUG — remove after diagnosing the silent auto-reply issue.
+  try {
+    await supabaseAdmin().from('debug_ai_trace').insert({
+      account_id: accountId,
+      conversation_id: conversation.id,
+      step: 'webhook:reached_ai_gate',
+      detail: JSON.stringify({ flowConsumed, interactiveReplyId, inboundText: inboundText.slice(0, 50) }),
+    })
+  } catch (e) {
+    console.error('[debug trace] insert failed:', e)
   }
 
   // AI auto-reply. Runs only for plain-text inbound the deterministic
