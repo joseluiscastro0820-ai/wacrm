@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,8 +17,25 @@ import {
 } from "@/components/ui/card";
 import { MessageSquare, CheckCircle, ArrowLeft } from "lucide-react";
 
+// `useSearchParams` (used below to detect an expired reset link)
+// opts the component out of static prerendering unless wrapped in
+// Suspense — same pattern as /login and /signup.
 export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ForgotPasswordPageInner />
+    </Suspense>
+  );
+}
+
+function ForgotPasswordPageInner() {
   const t = useTranslations("ForgotPasswordPage");
+  const searchParams = useSearchParams();
+  // /auth/callback bounces here with ?expired=1 when a reset link's
+  // code was missing, expired, or already used. A banner above the
+  // form is enough — it already does what they need next.
+  const linkExpired = searchParams.get("expired") === "1";
+
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -92,6 +110,12 @@ export default function ForgotPasswordPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleReset} className="flex flex-col gap-4">
+            {linkExpired && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
+                {t("errorLinkExpired")}
+              </div>
+            )}
+
             {error && (
               <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
                 {error}

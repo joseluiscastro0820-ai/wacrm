@@ -13,7 +13,8 @@
     "signingIn": "Iniciando sesión...",
     "signIn": "Iniciar sesión",
     "noAccount": "¿No tienes una cuenta?",
-    "createAccount": "Crear cuenta"
+    "createAccount": "Crear cuenta",
+    "errorLinkExpired": "Ese enlace expiró o ya fue usado. Si estabas restableciendo tu contraseña, solicita un nuevo enlace abajo."
   },
   "SignupPage": {
     "appName": "Agent Free WhatsApp",
@@ -50,7 +51,22 @@
     "sendResetLink": "Enviar enlace",
     "backToSignIn": "Volver a iniciar sesión",
     "successTitle": "Revisa tu correo",
-    "successDesc": "Te enviamos un enlace para restablecer tu contraseña a <em>{email}</em>. Revisa tu bandeja de entrada."
+    "successDesc": "Te enviamos un enlace para restablecer tu contraseña a <em>{email}</em>. Revisa tu bandeja de entrada.",
+    "errorLinkExpired": "Ese enlace expiró o ya no es válido. Solicita uno nuevo abajo."
+  },
+  "ResetPasswordPage": {
+    "title": "Establece una nueva contraseña",
+    "desc": "Elige una nueva contraseña para tu cuenta",
+    "newPasswordLabel": "Nueva contraseña",
+    "passwordPlaceholder": "Mínimo 8 caracteres, 1 mayúscula, 1 número",
+    "confirmPasswordLabel": "Confirmar nueva contraseña",
+    "confirmPasswordPlaceholder": "Repite tu nueva contraseña",
+    "updating": "Actualizando...",
+    "updatePassword": "Actualizar contraseña",
+    "errorMismatch": "Las contraseñas no coinciden",
+    "errorTooShort": "La contraseña debe tener al menos {min} caracteres",
+    "errorTooWeak": "La contraseña debe incluir al menos una letra mayúscula y un número",
+    "errorNoSession": "Este enlace expiró o ya fue usado. Solicita un nuevo enlace para restablecer tu contraseña."
   },
   "AgentsPage": {
     "title": "Agentes de IA",

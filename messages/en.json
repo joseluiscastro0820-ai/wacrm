@@ -13,7 +13,8 @@
     "signingIn": "Signing in...",
     "signIn": "Sign in",
     "noAccount": "Don't have an account?",
-    "createAccount": "Create account"
+    "createAccount": "Create account",
+    "errorLinkExpired": "That link has expired or was already used. If you were resetting your password, request a new link below."
   },
   "SignupPage": {
     "appName": "Agent Free WhatsApp",
@@ -50,7 +51,22 @@
     "sendResetLink": "Send reset link",
     "backToSignIn": "Back to sign in",
     "successTitle": "Check your email",
-    "successDesc": "We've sent a password reset link to <em>{email}</em>. Please check your inbox."
+    "successDesc": "We've sent a password reset link to <em>{email}</em>. Please check your inbox.",
+    "errorLinkExpired": "That link has expired or is no longer valid. Request a new one below."
+  },
+  "ResetPasswordPage": {
+    "title": "Set a new password",
+    "desc": "Choose a new password for your account",
+    "newPasswordLabel": "New password",
+    "passwordPlaceholder": "At least 8 characters, 1 uppercase, 1 number",
+    "confirmPasswordLabel": "Confirm new password",
+    "confirmPasswordPlaceholder": "Repeat your new password",
+    "updating": "Updating...",
+    "updatePassword": "Update password",
+    "errorMismatch": "Passwords do not match",
+    "errorTooShort": "Password must be at least {min} characters",
+    "errorTooWeak": "Password must include at least one uppercase letter and one number",
+    "errorNoSession": "This link has expired or was already used. Request a new password reset link."
   },
   "AgentsPage": {
     "title": "AI Agents",

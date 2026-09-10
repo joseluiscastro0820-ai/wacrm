@@ -36,6 +36,9 @@ function LoginPageInner() {
   // account. After a successful sign-in we send them to the join
   // page to accept rather than to /dashboard.
   const inviteToken = searchParams.get("invite");
+  // /auth/callback bounces here when an email link's code (signup
+  // confirmation, invite) was missing, expired, or already used.
+  const linkExpired = searchParams.get("auth_error") === "link_expired";
   const t = useTranslations("LoginPage");
 
   const [email, setEmail] = useState("");
@@ -104,6 +107,12 @@ function LoginPageInner() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            {linkExpired && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
+                {t("errorLinkExpired")}
+              </div>
+            )}
+
             {error && (
               <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
                 {error}

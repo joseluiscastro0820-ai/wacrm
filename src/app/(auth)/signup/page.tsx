@@ -88,13 +88,18 @@ function SignupPageInner() {
 
     setLoading(true);
 
-    // If we have an invite token, point Supabase's verification
-    // email back at the join page so the user can accept after
-    // verifying. Without a token, Supabase uses its default
-    // redirect (the app root).
+    // If we have an invite token, point Supabase's verification email
+    // back at the join page so the user can accept after verifying.
+    // Otherwise route it through /auth/callback so the confirmation
+    // link's PKCE code actually gets exchanged for a session — without
+    // that, confirming still works server-side, but the visitor lands
+    // logged out and has to sign in manually. Explicit here rather
+    // than left undefined (Supabase's own default-redirect behaviour)
+    // for the same reason the webhook URL bug taught us: don't depend
+    // on dashboard config we can't see from the code.
     const emailRedirectTo = inviteToken
       ? `${window.location.origin}/join/${encodeURIComponent(inviteToken)}`
-      : undefined;
+      : `${window.location.origin}/auth/callback?next=/dashboard`;
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -103,7 +108,7 @@ function SignupPageInner() {
         data: {
           full_name: fullName,
         },
-        ...(emailRedirectTo ? { emailRedirectTo } : {}),
+        emailRedirectTo,
       },
     });
 
