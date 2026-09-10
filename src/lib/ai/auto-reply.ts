@@ -157,6 +157,17 @@ export async function dispatchInboundToAiReply(
       systemPrompt,
       messages,
     })
+    // TEMP DEBUG — remove once the intermittent no-reply issue is confirmed fixed.
+    try {
+      await db.from('debug_ai_trace').insert({
+        account_id: accountId,
+        conversation_id: conversationId,
+        step: 'generate_ok',
+        detail: JSON.stringify({ handoff, textLen: text?.length ?? 0 }),
+      })
+    } catch {
+      // best-effort
+    }
 
     // Record token spend on the account's BYO key. Fire-and-forget so it
     // never adds latency to the customer-facing send: `logAiUsage`
@@ -229,5 +240,16 @@ export async function dispatchInboundToAiReply(
     })
   } catch (err) {
     console.error('[ai auto-reply] dispatch failed:', err)
+    // TEMP DEBUG — remove once the intermittent no-reply issue is confirmed fixed.
+    try {
+      await supabaseAdmin().from('debug_ai_trace').insert({
+        account_id: accountId,
+        conversation_id: conversationId,
+        step: 'exit:exception',
+        detail: err instanceof Error ? `${err.name}: ${err.message}` : JSON.stringify(err),
+      })
+    } catch {
+      // best-effort
+    }
   }
 }
