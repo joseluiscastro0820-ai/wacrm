@@ -1,5 +1,6 @@
 {
   "LoginPage": {
+    "appName": "Agent Free WhatsApp",
     "titleAccept": "Inicia sesión para aceptar",
     "titleWelcome": "Bienvenido de nuevo",
     "descAccept": "Inicia sesión y te llevaremos a la invitación.",
@@ -1544,6 +1545,7 @@
       "security": "Acceso y seguridad",
       "appearance": "Apariencia",
       "whatsapp": "WhatsApp",
+      "calendar": "Google Calendar",
       "templates": "Plantillas",
       "quick-replies": "Respuestas rápidas",
       "fields": "Campos y etiquetas",
@@ -1585,7 +1587,7 @@
       "profileSavedEmailCheck": "Perfil guardado — revisa tu correo para confirmar el cambio de dirección",
 
       "passwordTitle": "Contraseña",
-      "passwordDesc": "Usa al menos {min} caracteres. Seguirás con la sesión iniciada en este dispositivo después de cambiarla.",
+      "passwordDesc": "Usa al menos {min} caracteres, incluyendo una letra mayúscula y un número. Seguirás con la sesión iniciada en este dispositivo después de cambiarla.",
       "currentPassword": "Contraseña actual",
       "newPassword": "Nueva contraseña",
       "confirmPassword": "Confirmar nueva contraseña",
@@ -1593,6 +1595,7 @@
       "updatePassword": "Actualizar contraseña",
       "cannotChangeNoEmail": "No se puede cambiar la contraseña sin un correo actual",
       "passwordTooShort": "La contraseña debe tener al menos {min} caracteres",
+      "passwordTooWeak": "La contraseña debe incluir al menos una letra mayúscula y un número",
       "passwordMismatch": "La nueva contraseña y la confirmación no coinciden",
       "currentPasswordIncorrect": "La contraseña actual es incorrecta",
       "passwordUpdateFailed": "Error al actualizar la contraseña: {message}",
@@ -1737,6 +1740,45 @@
       "reindex": "Reindexar",
       "reindexTooltip": "Vuelve a generar embeddings de todos los documentos (p. ej. después de agregar una clave de embeddings)",
       "loading": "Cargando…"
+    },
+    "googleCalendar": {
+      "title": "Google Calendar",
+      "description": "Conecta un Google Calendar para que el asistente de IA vea la disponibilidad real y sugiera horarios de cita por WhatsApp. Solo sugiere — alguien de tu equipo sigue creando la cita en el calendario.",
+      "notConnectedTitle": "Sin conectar",
+      "notConnectedDesc": "Conecta un Google Calendar para que el asistente pueda ofrecer horarios reales a tus clientes.",
+      "connectButton": "Conectar Google Calendar",
+      "connecting": "Redirigiendo a Google…",
+      "connectedAs": "Conectado como {email}",
+      "disconnectButton": "Desconectar",
+      "disconnectConfirm": "¿Desconectar Google Calendar? El asistente dejará de sugerir horarios de cita.",
+      "disconnectSuccess": "Google Calendar desconectado.",
+      "disconnectFailed": "Error al desconectar.",
+      "connectedSuccess": "Google Calendar conectado.",
+      "errorGeneric": "No se pudo conectar con Google Calendar. Intenta de nuevo.",
+      "errorAccessDenied": "Se canceló el inicio de sesión con Google.",
+      "errorMissingConfig": "Google Calendar aún no está configurado en el servidor — agrega GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET primero.",
+      "errorNoRefreshToken": "Google no otorgó acceso permanente. Quita el acceso de wacrm en myaccount.google.com/permissions e intenta conectar de nuevo.",
+      "syncErrorBanner": "Hay un problema para acceder a este calendario ({error}). Intenta desconectar y volver a conectar.",
+      "suggestionsToggle": "Dejar que el asistente sugiera horarios de cita",
+      "suggestionsToggleDesc": "Cuando está activo, los próximos horarios libres se agregan a lo que sabe el asistente, para que los pueda ofrecer en la conversación. Nunca agenda nada por su cuenta.",
+      "businessHoursTitle": "Horario de atención",
+      "businessHoursDesc": "El asistente solo ofrece horarios dentro de esta ventana, en la zona horaria de tu calendario ({timezone}).",
+      "opens": "Abre",
+      "closes": "Cierra",
+      "workingDaysTitle": "Días laborales",
+      "saveHours": "Guardar",
+      "saveHoursSuccess": "Horario guardado.",
+      "saveHoursFailed": "Error al guardar.",
+      "loadFailed": "Error al cargar la configuración de Google Calendar.",
+      "days": {
+        "mon": "Lun",
+        "tue": "Mar",
+        "wed": "Mié",
+        "thu": "Jue",
+        "fri": "Vie",
+        "sat": "Sáb",
+        "sun": "Dom"
+      }
     }
   }
 }
