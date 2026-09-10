@@ -22,11 +22,15 @@ export const metadata: Metadata = {
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <>
+    // ambient-glow here (not per-page) so every auth screen — login,
+    // signup, forgot-password, reset-password, and anything added
+    // later — automatically gets the same dark-mode background glow
+    // as the dashboard shell, from this one shared layout.
+    <div className="ambient-glow min-h-screen bg-background">
       <div className="fixed right-4 top-4 z-50">
         <LanguageSwitcher />
       </div>
       {children}
-    </>
+    </div>
   );
 }
