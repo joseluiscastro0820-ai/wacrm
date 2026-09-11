@@ -30,9 +30,10 @@ export const metadata: Metadata = {
     index: false,
     follow: false,
   },
-  icons: {
-    icon: [{ url: "/icon" }],
-  },
+  // No manual `icons` entry — app/icon.png and app/apple-icon.png (the
+  // Agent Free brand mark) are picked up automatically via Next's
+  // file-based icon convention, which is preferred over hand-syncing a
+  // path here (see the Next.js metadata docs).
   formatDetection: {
     email: false,
     address: false,

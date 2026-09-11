@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MessageSquare, UsersRound } from "lucide-react";
+import { UsersRound } from "lucide-react";
 
 // `useSearchParams` opts the component out of static prerendering
 // unless it sits under a Suspense boundary. We split the form into
@@ -83,22 +83,32 @@ function LoginPageInner() {
     // child would sit in front of it in paint order and hide it.
     <div className="flex min-h-screen flex-col items-center justify-center px-4">
       <div className="mb-6 flex items-center gap-2">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-          <MessageSquare className="h-5 w-5 text-primary" />
-        </span>
+        {/* Brand mark — full color is already baked into the artwork,
+            so it's shown directly instead of inside a bg-primary/10
+            badge (which would just be a flat box behind a colorful
+            icon). */}
+        <img
+          src="/brand/agent-free-icon-transparent.png"
+          alt=""
+          className="h-8 w-auto"
+        />
         <span className="text-lg font-semibold tracking-tight text-foreground">
           {t('appName')}
         </span>
       </div>
       <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="items-center text-center">
-          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-            {inviteToken ? (
+          {inviteToken ? (
+            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
               <UsersRound className="h-6 w-6 text-primary" />
-            ) : (
-              <MessageSquare className="h-6 w-6 text-primary" />
-            )}
-          </div>
+            </div>
+          ) : (
+            <img
+              src="/brand/agent-free-icon-transparent.png"
+              alt=""
+              className="mb-2 h-12 w-auto"
+            />
+          )}
           <CardTitle className="text-xl text-foreground">
             {inviteToken ? t('titleAccept') : t('titleWelcome')}
           </CardTitle>

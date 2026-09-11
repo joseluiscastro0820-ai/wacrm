@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MessageSquare, CheckCircle, UsersRound } from "lucide-react";
+import { CheckCircle, UsersRound } from "lucide-react";
 import {
   PASSWORD_MIN_LENGTH,
   hasDigit,
@@ -28,9 +28,13 @@ import {
 function AppBrand({ appName }: { appName: string }) {
   return (
     <div className="mb-6 flex items-center gap-2">
-      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-        <MessageSquare className="h-5 w-5 text-primary" />
-      </span>
+      {/* Brand mark — full color is already baked into the artwork, so
+          it's shown directly instead of inside a bg-primary/10 badge. */}
+      <img
+        src="/brand/agent-free-icon-transparent.png"
+        alt=""
+        className="h-8 w-auto"
+      />
       <span className="text-lg font-semibold tracking-tight text-foreground">
         {appName}
       </span>
@@ -189,13 +193,17 @@ function SignupPageInner() {
       <AppBrand appName={t("appName")} />
       <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="items-center text-center">
-          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-            {inviteToken ? (
+          {inviteToken ? (
+            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
               <UsersRound className="h-6 w-6 text-primary" />
-            ) : (
-              <MessageSquare className="h-6 w-6 text-primary" />
-            )}
-          </div>
+            </div>
+          ) : (
+            <img
+              src="/brand/agent-free-icon-transparent.png"
+              alt=""
+              className="mb-2 h-12 w-auto"
+            />
+          )}
           <CardTitle className="text-xl text-foreground">
             {inviteToken ? t("titleCreateJoin") : t("titleCreate")}
           </CardTitle>
