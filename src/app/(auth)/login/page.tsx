@@ -78,7 +78,10 @@ function LoginPageInner() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+    // No bg-background here — the parent (auth) layout already paints
+    // that plus the ambient-glow wash; an opaque background on this
+    // child would sit in front of it in paint order and hide it.
+    <div className="flex min-h-screen flex-col items-center justify-center px-4">
       <div className="mb-6 flex items-center gap-2">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
           <MessageSquare className="h-5 w-5 text-primary" />

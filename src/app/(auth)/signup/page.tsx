@@ -140,7 +140,8 @@ function SignupPageInner() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      // No bg-background — see the note on the main return below.
+      <div className="flex min-h-screen flex-col items-center justify-center px-4">
         <AppBrand appName={t("appName")} />
         <Card className="w-full max-w-md border-border bg-card">
           <CardHeader className="items-center text-center">
@@ -181,7 +182,10 @@ function SignupPageInner() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+    // No bg-background here — the parent (auth) layout already paints
+    // that plus the ambient-glow wash; an opaque background on this
+    // child would sit in front of it in paint order and hide it.
+    <div className="flex min-h-screen flex-col items-center justify-center px-4">
       <AppBrand appName={t("appName")} />
       <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="items-center text-center">

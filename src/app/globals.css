@@ -118,6 +118,11 @@ html[data-mode="dark"] {
   --sidebar-accent: oklch(0.22 0.01 260);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.28 0.01 260);
+  /* Ambient-glow intensities (see .ambient-glow below). Dark mode gets
+   * a bold, clearly-visible wash — matching the vivid purple backdrop
+   * in the "Dealstack" reference — not a barely-there hint. */
+  --glow-1: 0.55;
+  --glow-2: 0.32;
 }
 
 html[data-mode="light"] {
@@ -149,6 +154,11 @@ html[data-mode="light"] {
   --sidebar-accent: oklch(0.96 0.004 260);
   --sidebar-accent-foreground: oklch(0.25 0.01 260);
   --sidebar-border: oklch(0.922 0.004 260);
+  /* Light mode keeps the same tinted-wash treatment, just dialed down
+   * so it reads as a soft designed backdrop instead of washing out
+   * white cards/text. */
+  --glow-1: 0.16;
+  --glow-2: 0.1;
 }
 
 /* ---- ACCENT: primary color ---- */
@@ -236,11 +246,15 @@ html[data-theme="rose"] {
 }
 
 /* ============================================================
- * VISUAL REFRESH — dark-mode ambient glow + card glow
+ * VISUAL REFRESH — ambient glow + card glow
  *
- * Inspired by the "Dealstack" reference mockup: a soft, colored
- * radial glow behind the dashboard shell and a faint primary-tinted
- * halo under cards. Written with the literal `html[data-mode="dark"]`
+ * Inspired by the "Dealstack" reference mockup: a colored radial
+ * glow behind the shell (dashboard + auth pages) and a faint
+ * primary-tinted halo under cards in dark mode. The glow runs in
+ * both modes — --glow-1/--glow-2 (set per MODE block above) tune it
+ * bold in dark mode and subtle in light mode, matching the vivid
+ * purple wash in the reference image instead of a barely-visible
+ * hint. Card glow is written with the literal `html[data-mode="dark"]`
  * attribute selector (not Tailwind's `dark:` variant, which is dead
  * in this app — mode is toggled via `data-mode`, never a `.dark`
  * class) so this reliably activates in dark mode regardless of that
@@ -258,27 +272,31 @@ html[data-mode="dark"] [data-slot="card"] {
   isolation: isolate;
 }
 
+/* Bold, clearly-visible radial wash behind the shell — the whole point
+ * is to read as "designed" at a glance, not as a barely-there hint.
+ * Active in BOTH modes; --glow-1/--glow-2 (set per MODE block above)
+ * do the dark/light balancing so this one rule doesn't need to be
+ * duplicated per mode. */
 .ambient-glow::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: 0;
   background:
     radial-gradient(
-      600px circle at 15% 0%,
-      oklch(from var(--primary) l c h / 0.16),
-      transparent 60%
+      1100px circle at 20% -10%,
+      oklch(from var(--primary) l c h / var(--glow-1)),
+      transparent 55%
     ),
     radial-gradient(
-      500px circle at 100% 20%,
-      oklch(from var(--primary) l c h / 0.1),
-      transparent 55%
+      900px circle at 100% 10%,
+      oklch(from var(--primary) l c h / var(--glow-2)),
+      transparent 50%
+    ),
+    radial-gradient(
+      800px circle at 0% 100%,
+      oklch(from var(--primary) l c h / var(--glow-2)),
+      transparent 50%
     );
-  transition: opacity 0.2s ease;
-}
-
-html[data-mode="dark"] .ambient-glow::before {
-  opacity: 1;
 }
