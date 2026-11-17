@@ -7,10 +7,11 @@ import { buildSystemPrompt } from './defaults'
 import { buildHandoffSummary } from './handoff'
 import { logAiUsage } from './usage'
 import { latestUserMessage } from './query'
+import { buildAiTools, executeAiTool } from './tools'
 import { engineSendText } from '@/lib/flows/meta-send'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { AiError, type GenerateResult } from './types'
-import type { AiConfig, ChatMessage } from './types'
+import type { AiConfig, ChatMessage, ToolDefinition } from './types'
 
 interface DispatchArgs {
   /** Tenancy key — drives config, contact, and whatsapp_config lookups. */
@@ -46,6 +47,8 @@ async function generateReplyWithRetry(args: {
   config: AiConfig
   systemPrompt: string
   messages: ChatMessage[]
+  tools?: ToolDefinition[]
+  runTool?: (name: string, toolArgs: Record<string, unknown>) => Promise<string>
 }): Promise<GenerateResult> {
   try {
     return await generateReply(args)
@@ -56,6 +59,10 @@ async function generateReplyWithRetry(args: {
       `[ai auto-reply] transient provider error, retrying once: ${err.message}`,
     )
     await sleep(RETRY_DELAY_MS)
+    // A retry re-runs any tool calls the model makes this time too.
+    // That's safe here: add_tag/update_contact_field are idempotent
+    // (addContactTagIfAbsent no-ops on a duplicate, a field update is
+    // last-write-wins), so a tool re-run on retry can't double-apply.
     return await generateReply(args)
   }
 }
@@ -146,16 +153,31 @@ export async function dispatchInboundToAiReply(
       latestUserMessage(messages),
     )
 
+    // Tool catalog for this account (tags + contact fields it actually
+    // has). Best-effort: a lookup failure here just means no tools
+    // this turn, never a reason to fail the whole reply.
+    const tools = await buildAiTools(db, accountId).catch((err) => {
+      console.warn('[ai auto-reply] buildAiTools failed, continuing without tools:', err)
+      return [] as ToolDefinition[]
+    })
+
     const systemPrompt = buildSystemPrompt({
       userPrompt: config.systemPrompt,
       mode: 'auto_reply',
       knowledge,
+      hasTools: tools.length > 0,
     })
 
     const { text, handoff, usage } = await generateReplyWithRetry({
       config,
       systemPrompt,
       messages,
+      tools: tools.length > 0 ? tools : undefined,
+      runTool:
+        tools.length > 0
+          ? (name, toolArgs) =>
+              executeAiTool(db, name, toolArgs, { accountId, contactId, conversationId })
+          : undefined,
     })
 
     // Record token spend on the account's BYO key. Fire-and-forget so it

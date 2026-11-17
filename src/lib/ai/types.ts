@@ -48,10 +48,13 @@ export interface AiUsage {
   totalTokens: number
 }
 
-/** Raw text + usage a provider adapter returns before handoff parsing. */
+/** Raw text + usage a provider adapter returns before handoff parsing.
+ *  `toolCalls` is set instead of a final `text` when the model asked to
+ *  invoke one or more tools rather than answer yet. */
 export interface ProviderResult {
   text: string
   usage: AiUsage | null
+  toolCalls?: ToolCallRequest[]
 }
 
 /** Outcome of a generation call. */
@@ -62,6 +65,41 @@ export interface GenerateResult {
   handoff: boolean
   /** Provider token usage for this call, or null when unavailable. */
   usage: AiUsage | null
+}
+
+// ------------------------------------------------------------
+// Tool calling — shared across the three provider adapters.
+// ------------------------------------------------------------
+
+/** A JSON-schema-ish tool the model can choose to invoke. Each provider
+ *  adapter wraps `parameters` in its own request envelope, but the
+ *  schema itself is the same object for all three. */
+export interface ToolDefinition {
+  name: string
+  description: string
+  parameters: {
+    type: 'object'
+    properties: Record<string, { type: string; description: string; enum?: string[] }>
+    required: string[]
+  }
+}
+
+/** One tool invocation the model asked for. `arguments` is already
+ *  parsed JSON (never the raw string some providers return). */
+export interface ToolCallRequest {
+  id: string
+  name: string
+  arguments: Record<string, unknown>
+}
+
+/** One full round of tool use already completed within the current
+ *  `generateReply` call: what the model asked for, and what running it
+ *  returned. Replayed back to the provider in its own native message
+ *  shape so the next call can see it — never persisted to the
+ *  customer-facing conversation. */
+export interface ToolRound {
+  calls: ToolCallRequest[]
+  results: { id: string; name: string; result: string }[]
 }
 
 /**

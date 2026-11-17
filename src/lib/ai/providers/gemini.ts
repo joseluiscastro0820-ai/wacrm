@@ -4,14 +4,61 @@ import { mergeConsecutive, normalizeUsage, toNetworkError, type ProviderArgs } f
 
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 
+interface GeminiPart {
+  text?: string
+  functionCall?: { name?: string; args?: Record<string, unknown> }
+}
+
 interface GeminiResponse {
-  candidates?: { content?: { parts?: { text?: string }[] } }[]
+  candidates?: { content?: { parts?: GeminiPart[] } }[]
   usageMetadata?: {
     promptTokenCount?: number
     candidatesTokenCount?: number
     totalTokenCount?: number
   }
   error?: { code?: number; message?: string; status?: string }
+}
+
+/** Gemini's `tools` envelope: one entry with a `functionDeclarations`
+ *  array (Gemini groups all functions under a single tool). */
+function toGeminiTools(tools: ProviderArgs['tools']) {
+  if (!tools || tools.length === 0) return undefined
+  return [
+    {
+      functionDeclarations: tools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters,
+      })),
+    },
+  ]
+}
+
+/**
+ * Replay prior tool rounds as Gemini expects them: a `model` turn
+ * carrying the `functionCall` part(s), followed by a `function` turn
+ * carrying the matching `functionResponse` part(s).
+ *
+ * NOTE: unlike the OpenAI/Anthropic shapes below (both exercised
+ * against their public docs with high confidence), this one hasn't
+ * been smoke-tested against a live Gemini key — verify the first real
+ * tool-calling run against Gemini before relying on it in production.
+ */
+function toGeminiToolContents(toolTurns: ProviderArgs['toolTurns']) {
+  const out: { role: string; parts: Record<string, unknown>[] }[] = []
+  for (const round of toolTurns ?? []) {
+    out.push({
+      role: 'model',
+      parts: round.calls.map((c) => ({ functionCall: { name: c.name, args: c.arguments } })),
+    })
+    out.push({
+      role: 'function',
+      parts: round.results.map((r) => ({
+        functionResponse: { name: r.name, response: { result: r.result } },
+      })),
+    })
+  }
+  return out
 }
 
 /**
@@ -33,7 +80,7 @@ function toGeminiContents(messages: ChatMessage[]) {
  * "Test key" button surfaces "invalid key" instead of a generic error.
  */
 export async function generateGemini(args: ProviderArgs): Promise<ProviderResult> {
-  const { apiKey, model, systemPrompt, messages, timeoutMs } = args
+  const { apiKey, model, systemPrompt, messages, timeoutMs, tools, toolTurns } = args
 
   let res: Response
   try {
@@ -43,9 +90,10 @@ export async function generateGemini(args: ProviderArgs): Promise<ProviderResult
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: toGeminiContents(messages),
+          contents: [...toGeminiContents(messages), ...toGeminiToolContents(toolTurns)],
           systemInstruction: { parts: [{ text: systemPrompt }] },
           generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS },
+          ...(toGeminiTools(tools) ? { tools: toGeminiTools(tools) } : {}),
         }),
         signal: AbortSignal.timeout(timeoutMs),
       },
@@ -82,8 +130,27 @@ export async function generateGemini(args: ProviderArgs): Promise<ProviderResult
   }
 
   const data = (await res.json().catch(() => null)) as GeminiResponse | null
-  const text = data?.candidates?.[0]?.content?.parts
-    ?.map((p) => p.text ?? '')
+  const usage = normalizeUsage({
+    prompt: data?.usageMetadata?.promptTokenCount,
+    completion: data?.usageMetadata?.candidatesTokenCount,
+    total: data?.usageMetadata?.totalTokenCount,
+  })
+
+  const parts = data?.candidates?.[0]?.content?.parts ?? []
+  const callParts = parts.filter((p) => p.functionCall?.name)
+  if (callParts.length > 0) {
+    // Gemini doesn't hand back a call id — synthesize one scoped to this
+    // response so the result can be matched back to it on replay.
+    const toolCalls = callParts.map((p, i) => ({
+      id: `call_${i}`,
+      name: p.functionCall!.name!,
+      arguments: p.functionCall!.args ?? {},
+    }))
+    return { text: '', usage, toolCalls }
+  }
+
+  const text = parts
+    .map((p) => p.text ?? '')
     .join('')
     .trim()
   if (!text) {
@@ -91,10 +158,5 @@ export async function generateGemini(args: ProviderArgs): Promise<ProviderResult
       code: 'empty_response',
     })
   }
-  const usage = normalizeUsage({
-    prompt: data?.usageMetadata?.promptTokenCount,
-    completion: data?.usageMetadata?.candidatesTokenCount,
-    total: data?.usageMetadata?.totalTokenCount,
-  })
   return { text, usage }
 }

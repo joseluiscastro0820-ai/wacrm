@@ -1,7 +1,7 @@
-import { AiError, type AiUsage, type ChatMessage } from '../types'
+import { AiError, type AiUsage, type ChatMessage, type ToolDefinition, type ToolRound } from '../types'
 
 // ============================================================
-// Bits shared by the OpenAI + Anthropic adapters.
+// Bits shared by the OpenAI + Anthropic + Gemini adapters.
 // ============================================================
 
 export interface ProviderArgs {
@@ -10,6 +10,13 @@ export interface ProviderArgs {
   systemPrompt: string
   messages: ChatMessage[]
   timeoutMs: number
+  /** Tool catalog to offer the model this call. Omitted/empty = no
+   *  tool calling, same request shape as before this feature existed. */
+  tools?: ToolDefinition[]
+  /** Tool rounds already completed earlier in this same `generateReply`
+   *  call, oldest first. Each adapter replays these in its own native
+   *  message shape before the outgoing request. */
+  toolTurns?: ToolRound[]
 }
 
 /**

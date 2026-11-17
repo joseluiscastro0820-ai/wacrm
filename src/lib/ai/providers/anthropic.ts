@@ -12,9 +12,40 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 const ANTHROPIC_VERSION = '2023-06-01'
 
 interface AnthropicResponse {
-  content?: { type?: string; text?: string }[]
+  content?: { type?: string; text?: string; id?: string; name?: string; input?: Record<string, unknown> }[]
   usage?: { input_tokens?: number; output_tokens?: number }
+  stop_reason?: string
 }
+
+/** Anthropic's `tools` envelope: flat, with `input_schema`. */
+function toAnthropicTools(tools: ProviderArgs['tools']) {
+  if (!tools || tools.length === 0) return undefined
+  return tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters }))
+}
+
+/**
+ * Replay prior tool rounds as Anthropic expects them: an assistant
+ * message whose content holds one `tool_use` block per call, followed
+ * by a user message whose content holds the matching `tool_result`
+ * blocks — Anthropic requires that pairing, not separate per-call
+ * messages.
+ */
+function toAnthropicToolMessages(toolTurns: ProviderArgs['toolTurns']): ChatMessageLike[] {
+  const out: ChatMessageLike[] = []
+  for (const round of toolTurns ?? []) {
+    out.push({
+      role: 'assistant',
+      content: round.calls.map((c) => ({ type: 'tool_use', id: c.id, name: c.name, input: c.arguments })),
+    })
+    out.push({
+      role: 'user',
+      content: round.results.map((r) => ({ type: 'tool_result', tool_use_id: r.id, content: r.result })),
+    })
+  }
+  return out
+}
+
+type ChatMessageLike = { role: 'user' | 'assistant'; content: string | Record<string, unknown>[] }
 
 /**
  * Anthropic's Messages API requires strictly alternating roles that
@@ -40,7 +71,7 @@ function normalizeForAnthropic(messages: ChatMessage[]): ChatMessage[] {
  * in `generateReply`).
  */
 export async function generateAnthropic(args: ProviderArgs): Promise<ProviderResult> {
-  const { apiKey, model, systemPrompt, messages, timeoutMs } = args
+  const { apiKey, model, systemPrompt, messages, timeoutMs, tools, toolTurns } = args
 
   let res: Response
   try {
@@ -55,7 +86,8 @@ export async function generateAnthropic(args: ProviderArgs): Promise<ProviderRes
         model,
         system: systemPrompt,
         max_tokens: MAX_OUTPUT_TOKENS,
-        messages: normalizeForAnthropic(messages),
+        messages: [...normalizeForAnthropic(messages), ...toAnthropicToolMessages(toolTurns)],
+        ...(toAnthropicTools(tools) ? { tools: toAnthropicTools(tools) } : {}),
       }),
       signal: AbortSignal.timeout(timeoutMs),
     })
@@ -68,6 +100,21 @@ export async function generateAnthropic(args: ProviderArgs): Promise<ProviderRes
   }
 
   const data = (await res.json().catch(() => null)) as AnthropicResponse | null
+  const usage = normalizeUsage({
+    prompt: data?.usage?.input_tokens,
+    completion: data?.usage?.output_tokens,
+  })
+
+  const toolUseBlocks = (data?.content ?? []).filter((b) => b.type === 'tool_use')
+  if (toolUseBlocks.length > 0) {
+    const toolCalls = toolUseBlocks.map((b) => ({
+      id: b.id ?? '',
+      name: b.name ?? '',
+      arguments: b.input ?? {},
+    }))
+    return { text: '', usage, toolCalls }
+  }
+
   const text = data?.content
     ?.filter((b) => b.type === 'text' && typeof b.text === 'string')
     .map((b) => b.text)
@@ -79,9 +126,5 @@ export async function generateAnthropic(args: ProviderArgs): Promise<ProviderRes
     })
   }
   // Anthropic reports input/output but no total — normalizeUsage sums.
-  const usage = normalizeUsage({
-    prompt: data?.usage?.input_tokens,
-    completion: data?.usage?.output_tokens,
-  })
   return { text, usage }
 }

@@ -192,3 +192,142 @@ describe('generateReply — Anthropic', () => {
     expect(body.messages).toHaveLength(1)
   })
 })
+
+const TOOLS = [
+  {
+    name: 'add_tag',
+    description: 'Add a tag',
+    parameters: { type: 'object' as const, properties: { tag_id: { type: 'string', description: 'id' } }, required: ['tag_id'] },
+  },
+]
+
+describe('generateReply — tool calling', () => {
+  it('OpenAI: runs the requested tool, replays the result, and returns the final text', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        okResponse({
+          choices: [
+            {
+              message: {
+                content: null,
+                tool_calls: [{ id: 'call_1', function: { name: 'add_tag', arguments: '{"tag_id":"tag-1"}' } }],
+              },
+            },
+          ],
+          usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+        }),
+      )
+      .mockResolvedValueOnce(
+        okResponse({
+          choices: [{ message: { content: 'Done, tagged you!' } }],
+          usage: { prompt_tokens: 20, completion_tokens: 4, total_tokens: 24 },
+        }),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const runTool = vi.fn().mockResolvedValue('tag added')
+    const res = await generateReply({
+      config: config({ provider: 'openai' }),
+      systemPrompt: 'sys',
+      messages: [{ role: 'user', content: 'tag me as interested' }],
+      tools: TOOLS,
+      runTool,
+    })
+
+    expect(runTool).toHaveBeenCalledWith('add_tag', { tag_id: 'tag-1' })
+    expect(res).toEqual({
+      text: 'Done, tagged you!',
+      handoff: false,
+      // Usage accumulates across both provider round-trips.
+      usage: { promptTokens: 30, completionTokens: 9, totalTokens: 39 },
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    // The second request replays the tool call + its result.
+    const secondBody = JSON.parse(fetchMock.mock.calls[1][1].body)
+    const toolCallMsg = secondBody.messages.find((m: { tool_calls?: unknown }) => m.tool_calls)
+    expect(toolCallMsg.tool_calls[0].function.name).toBe('add_tag')
+    const toolResultMsg = secondBody.messages.find((m: { role: string }) => m.role === 'tool')
+    expect(toolResultMsg.content).toBe('tag added')
+  })
+
+  it('Anthropic: pairs tool_use/tool_result correctly across the replay', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        okResponse({
+          content: [{ type: 'tool_use', id: 'toolu_1', name: 'add_tag', input: { tag_id: 'tag-1' } }],
+          usage: { input_tokens: 12, output_tokens: 3 },
+        }),
+      )
+      .mockResolvedValueOnce(
+        okResponse({ content: [{ type: 'text', text: 'All set.' }], usage: { input_tokens: 20, output_tokens: 4 } }),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const runTool = vi.fn().mockResolvedValue('tag added')
+    const res = await generateReply({
+      config: config({ provider: 'anthropic' }),
+      systemPrompt: 'sys',
+      messages: [{ role: 'user', content: 'tag me' }],
+      tools: TOOLS,
+      runTool,
+    })
+
+    expect(res.text).toBe('All set.')
+    expect(res.handoff).toBe(false)
+    const secondBody = JSON.parse(fetchMock.mock.calls[1][1].body)
+    const assistantToolUse = secondBody.messages.find(
+      (m: { role: string; content: unknown }) => m.role === 'assistant' && Array.isArray(m.content),
+    )
+    expect(assistantToolUse.content[0].type).toBe('tool_use')
+    const userToolResult = secondBody.messages.at(-1)
+    expect(userToolResult.content[0]).toEqual({ type: 'tool_result', tool_use_id: 'toolu_1', content: 'tag added' })
+  })
+
+  it('hands off instead of looping forever once the step cap is hit', async () => {
+    const alwaysWantsTool = okResponse({
+      choices: [{ message: { content: null, tool_calls: [{ id: 'call_x', function: { name: 'add_tag', arguments: '{}' } }] } }],
+    })
+    const fetchMock = vi.fn().mockResolvedValue(alwaysWantsTool)
+    vi.stubGlobal('fetch', fetchMock)
+
+    const runTool = vi.fn().mockResolvedValue('ok')
+    const res = await generateReply({
+      config: config({ provider: 'openai' }),
+      systemPrompt: 'sys',
+      messages: [{ role: 'user', content: 'hi' }],
+      tools: TOOLS,
+      runTool,
+    })
+
+    expect(res).toMatchObject({ text: '', handoff: true })
+    // MAX_TOOL_STEPS = 3 → 4 provider calls total (steps 0..3), tool run 3 times.
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(runTool).toHaveBeenCalledTimes(3)
+  })
+
+  it('malformed tool arguments become {} rather than throwing', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        okResponse({
+          choices: [{ message: { content: null, tool_calls: [{ id: 'call_1', function: { name: 'add_tag', arguments: '{not json' } }] } }],
+        }),
+      )
+      .mockResolvedValueOnce(okResponse({ choices: [{ message: { content: 'ok' } }] }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const runTool = vi.fn().mockResolvedValue('ok')
+    await generateReply({
+      config: config({ provider: 'openai' }),
+      systemPrompt: 'sys',
+      messages: [{ role: 'user', content: 'hi' }],
+      tools: TOOLS,
+      runTool,
+    })
+
+    expect(runTool).toHaveBeenCalledWith('add_tag', {})
+  })
+})
