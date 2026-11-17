@@ -16,8 +16,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
+import type { Locale } from "date-fns";
 
 import { useTranslations } from "next-intl";
+import { useDateFnsLocale } from "@/i18n/date-locale";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -100,6 +102,7 @@ export default function FlowRunsPage() {
   const params = useParams<{ id: string }>();
   const t = useTranslations("Flows.logs");
   const tEdit = useTranslations("Flows.edit");
+  const dateLocale = useDateFnsLocale();
 
   const [flow, setFlow] = useState<{ id: string; name: string } | null>(null);
   const [runs, setRuns] = useState<RunRow[]>([]);
@@ -203,6 +206,7 @@ export default function FlowRunsPage() {
               expanded={expanded.has(run.id)}
               onToggle={() => toggle(run.id)}
               t={t}
+              dateLocale={dateLocale}
             />
           ))}
         </div>
@@ -217,12 +221,14 @@ function RunCard({
   expanded,
   onToggle,
   t,
+  dateLocale,
 }: {
   run: RunRow;
   events: EventRow[];
   expanded: boolean;
   onToggle: () => void;
   t: ReturnType<typeof useTranslations>;
+  dateLocale: Locale;
 }) {
   const meta = STATUS_META[run.status];
   const StatusIcon = meta.icon;
@@ -231,6 +237,7 @@ function RunCard({
   const duration = run.ended_at
     ? formatDistanceToNow(new Date(run.ended_at), {
         addSuffix: false,
+        locale: dateLocale,
       })
     : null;
   return (
@@ -273,7 +280,11 @@ function RunCard({
             )}
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-            <span>{t("started", { time: format(new Date(run.started_at), "PP p") })}</span>
+            <span>
+              {t("started", {
+                time: format(new Date(run.started_at), "PP p", { locale: dateLocale }),
+              })}
+            </span>
             {run.reprompt_count > 0 && (
               <span>· {t("reprompts", { count: run.reprompt_count })}</span>
             )}

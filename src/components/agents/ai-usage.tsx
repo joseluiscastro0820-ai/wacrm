@@ -24,6 +24,7 @@ import { Skeleton } from '@/components/dashboard/skeleton';
 import { BarChart } from '@/components/tremor/bar-chart';
 import { formatCompactNumber } from '@/lib/currency';
 import { format, parseISO } from 'date-fns';
+import { useDateFnsLocale } from '@/i18n/date-locale';
 
 interface UsageResponse {
   window_days: number;
@@ -71,6 +72,7 @@ const WINDOWS = [7, 30, 90] as const;
  */
 export function AiUsageCard() {
   const t = useTranslations('AgentsPage.usageCard');
+  const dateLocale = useDateFnsLocale();
   const { accountId, accountRole, profileLoading } = useAuth();
   const canView = accountRole ? canEditSettings(accountRole) : false;
 
@@ -112,7 +114,10 @@ export function AiUsageCard() {
   if (profileLoading || !canView) return null;
 
   const chartData =
-    data?.daily.map((d) => ({ day: format(parseISO(d.date), 'MMM d'), Tokens: d.tokens })) ??
+    data?.daily.map((d) => ({
+      day: format(parseISO(d.date), 'MMM d', { locale: dateLocale }),
+      Tokens: d.tokens,
+    })) ??
     [];
   const hasSpend = (data?.totals.total_tokens ?? 0) > 0;
 
