@@ -155,6 +155,33 @@ export interface ContactNote {
   created_at: string;
 }
 
+// ============================================================
+// Products / catalog
+// ============================================================
+
+export interface Product {
+  id: string;
+  user_id: string;
+  account_id: string;
+  name: string;
+  description?: string | null;
+  sku?: string | null;
+  price: number;
+  currency: string;
+  /** Current count on hand. Ignored by stock badges when track_stock is false. */
+  stock_quantity: number;
+  /**
+   * When false, the product is always shown as in-stock — for
+   * made-to-order items or services with no meaningful stock count.
+   */
+  track_stock: boolean;
+  image_url?: string | null;
+  /** Hidden from pickers (deal form, AI tools) when false, without deleting it. */
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export type ConversationStatus = 'open' | 'pending' | 'closed';
 
 export interface Conversation {

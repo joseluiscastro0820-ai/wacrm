@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquare,
+  Package,
   Radio,
   Settings,
   Shield,
@@ -127,6 +128,12 @@ const navItems: NavItem[] = [
     labelKey: "pipelines",
     icon: GitBranch,
     iconBg: "bg-cyan-500/15 text-cyan-400",
+  },
+  {
+    href: "/catalog",
+    labelKey: "catalog",
+    icon: Package,
+    iconBg: "bg-lime-500/15 text-lime-400",
   },
   {
     href: "/broadcasts",
