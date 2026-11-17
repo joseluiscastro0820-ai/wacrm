@@ -1960,7 +1960,11 @@
     "unread": "Unread",
     "retry": "Retry",
     "markReadError": "Failed to mark notification as read",
-    "markAllReadError": "Failed to mark all as read"
+    "markAllReadError": "Failed to mark all as read",
+    "assignedTitle": "New conversation assigned",
+    "assignedBody": "{actor} assigned you a conversation with {contact}",
+    "someone": "Someone",
+    "aContact": "a contact"
   },
   "Join": {
     "verifying": "Verifying invitation…",

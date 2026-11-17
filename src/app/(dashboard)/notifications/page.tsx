@@ -27,6 +27,14 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[] | null>(
     null,
   );
+  // contacts has a real FK from notifications.contact_id, so it comes back
+  // embedded; profiles does NOT (notifications.actor_user_id points at
+  // auth.users, which PostgREST can't embed), so actor names are fetched
+  // separately and looked up by id at render time.
+  const [contactNames, setContactNames] = useState<Record<string, string>>(
+    {},
+  );
+  const [actorNames, setActorNames] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
 
@@ -35,7 +43,7 @@ export default function NotificationsPage() {
     const supabase = createClient();
     const { data, error: fetchErr } = await supabase
       .from("notifications")
-      .select("*")
+      .select("*, contact:contacts(name, phone)")
       .eq("account_id", accountId)
       .order("created_at", { ascending: false })
       .limit(100);
@@ -43,7 +51,39 @@ export default function NotificationsPage() {
       setError(fetchErr.message);
       return;
     }
-    setNotifications((data ?? []) as Notification[]);
+    const rows = (data ?? []) as (Notification & {
+      contact: { name: string | null; phone: string } | null;
+    })[];
+    setNotifications(rows);
+    setContactNames((prev) => {
+      const next = { ...prev };
+      for (const n of rows) {
+        if (n.contact_id && n.contact) {
+          next[n.contact_id] = n.contact.name?.trim() || n.contact.phone;
+        }
+      }
+      return next;
+    });
+
+    const actorIds = Array.from(
+      new Set(rows.map((n) => n.actor_user_id).filter((id): id is string => !!id)),
+    ).filter((id) => !(id in actorNames));
+    if (actorIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", actorIds);
+      if (profiles && profiles.length > 0) {
+        setActorNames((prev) => {
+          const next = { ...prev };
+          for (const p of profiles as { user_id: string; full_name: string | null }[]) {
+            if (p.full_name?.trim()) next[p.user_id] = p.full_name.trim();
+          }
+          return next;
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountId]);
 
   useEffect(() => {
@@ -62,12 +102,10 @@ export default function NotificationsPage() {
         { event: "*", schema: "public", table: "notifications" },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            const row = payload.new as Notification;
-            setNotifications((prev) => {
-              if (!prev) return [row];
-              if (prev.some((n) => n.id === row.id)) return prev;
-              return [row, ...prev];
-            });
+            // The realtime payload is the bare row — no embedded contact,
+            // no actor name — so re-run the enriched load() rather than
+            // splicing in a row the UI can't yet label correctly.
+            load();
           } else if (payload.eventType === "UPDATE") {
             const row = payload.new as Notification;
             setNotifications((prev) =>
@@ -87,7 +125,7 @@ export default function NotificationsPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [load]);
 
   const markRead = useCallback(
     async (id: string) => {
@@ -206,6 +244,25 @@ export default function NotificationsPage() {
           {notifications.map((n) => {
             const Icon = TYPE_ICON[n.type] ?? Bell;
             const isUnread = !n.read_at;
+            // `title`/`body` are written once, in English, by the DB
+            // trigger that creates the row (notify_conversation_assigned) —
+            // it has no access to the viewer's locale. Rebuild the copy
+            // here from the structured fields instead, in the app's
+            // current language; the stored text is only a fallback for a
+            // notification type this client doesn't know how to render.
+            const displayTitle =
+              n.type === "conversation_assigned" ? t("assignedTitle") : n.title;
+            const displayBody =
+              n.type === "conversation_assigned"
+                ? t("assignedBody", {
+                    actor:
+                      (n.actor_user_id && actorNames[n.actor_user_id]) ||
+                      t("someone"),
+                    contact:
+                      (n.contact_id && contactNames[n.contact_id]) ||
+                      t("aContact"),
+                  })
+                : n.body;
             return (
               <li key={n.id}>
                 <button
@@ -240,7 +297,7 @@ export default function NotificationsPage() {
                           isUnread ? "text-foreground" : "text-muted-foreground",
                         )}
                       >
-                        {n.title}
+                        {displayTitle}
                       </span>
                       {isUnread && (
                         <span
@@ -249,9 +306,9 @@ export default function NotificationsPage() {
                         />
                       )}
                     </div>
-                    {n.body && (
+                    {displayBody && (
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {n.body}
+                        {displayBody}
                       </p>
                     )}
                     <p className="mt-1 text-[11px] text-muted-foreground/70">

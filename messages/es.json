@@ -1960,7 +1960,11 @@
     "unread": "Sin leer",
     "retry": "Reintentar",
     "markReadError": "No se pudo marcar la notificación como leída",
-    "markAllReadError": "No se pudieron marcar todas como leídas"
+    "markAllReadError": "No se pudieron marcar todas como leídas",
+    "assignedTitle": "Nueva conversación asignada",
+    "assignedBody": "{actor} te asignó una conversación con {contact}",
+    "someone": "Alguien",
+    "aContact": "un contacto"
   },
   "Join": {
     "verifying": "Verificando invitación…",
