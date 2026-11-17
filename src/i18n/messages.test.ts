@@ -2,15 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-// Locale dictionaries are hand-maintained. English is the source of
-// truth (src/i18n/request.ts falls back to en.json only when a whole
-// locale file is missing — there is no per-key fallback), so a key
-// that lands in en.json and not in a translation renders as a raw
-// keypath for users on that locale. This guards the parity.
-
 const MESSAGES_DIR = join(process.cwd(), 'messages');
 const SOURCE_LOCALE = 'en';
-const TRANSLATED_LOCALES = ['ko'];
+const TRANSLATED_LOCALES = ['es', 'ko'];
 
 function loadKeys(locale: string): Set<string> {
   const raw = readFileSync(join(MESSAGES_DIR, `${locale}.json`), 'utf8');
