@@ -36,14 +36,21 @@ import { useTranslations } from "next-intl";
 // agent+. The two CTAs gate on different `useCan` capabilities,
 // not on different copy.
 
-// Spec-defined seed — name and color per the product spec.
-const SPEC_DEFAULT_STAGES = [
-  { name: "New Lead", color: "#3b82f6", position: 0 }, // blue
-  { name: "Qualified", color: "#eab308", position: 1 }, // yellow
-  { name: "Proposal Sent", color: "#f97316", position: 2 }, // orange
-  { name: "Negotiation", color: "#8b5cf6", position: 3 }, // purple
-  { name: "Won", color: "#22c55e", position: 4 }, // green
-];
+// Spec-defined seed — color/position per the product spec; the name
+// itself is looked up from Pipelines.page.defaultStages so a pipeline
+// (auto-seeded or created via the dialog) gets stage names in the
+// app's current language instead of being stuck in English forever —
+// these become real `pipeline_stages.name` rows, not UI copy, so
+// next-intl can't translate them after the fact.
+function getSpecDefaultStages(t: ReturnType<typeof useTranslations>) {
+  return [
+    { name: t("defaultStages.newLead"), color: "#3b82f6", position: 0 }, // blue
+    { name: t("defaultStages.qualified"), color: "#eab308", position: 1 }, // yellow
+    { name: t("defaultStages.proposalSent"), color: "#f97316", position: 2 }, // orange
+    { name: t("defaultStages.negotiation"), color: "#8b5cf6", position: 3 }, // purple
+    { name: t("defaultStages.won"), color: "#22c55e", position: 4 }, // green
+  ];
+}
 
 export default function PipelinesPage() {
   const t = useTranslations("Pipelines.page");
@@ -129,7 +136,7 @@ export default function PipelinesPage() {
       return null;
     }
 
-    const stagesPayload = SPEC_DEFAULT_STAGES.map((s) => ({
+    const stagesPayload = getSpecDefaultStages(t).map((s) => ({
       pipeline_id: pipeline.id,
       name: s.name,
       color: s.color,
@@ -138,7 +145,7 @@ export default function PipelinesPage() {
     await supabase.from("pipeline_stages").insert(stagesPayload);
 
     return pipeline as Pipeline;
-  }, [supabase, accountId]);
+  }, [supabase, accountId, t]);
 
   // Initial load + seed-if-empty
   useEffect(() => {
@@ -279,7 +286,7 @@ export default function PipelinesPage() {
       return;
     }
 
-    const stagesPayload = SPEC_DEFAULT_STAGES.map((s) => ({
+    const stagesPayload = getSpecDefaultStages(t).map((s) => ({
       pipeline_id: pipeline.id,
       name: s.name,
       color: s.color,

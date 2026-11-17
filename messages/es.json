@@ -619,7 +619,14 @@
       "toastFailedMoveDeal": "Error al mover el negocio",
       "toastFailedCreatePipeline": "Error al crear el pipeline",
       "toastPipelineCreated": "Pipeline creado",
-      "toastNotLinkedToAccount": "Tu perfil no está vinculado a ninguna cuenta."
+      "toastNotLinkedToAccount": "Tu perfil no está vinculado a ninguna cuenta.",
+      "defaultStages": {
+        "newLead": "Nuevo lead",
+        "qualified": "Calificado",
+        "proposalSent": "Propuesta enviada",
+        "negotiation": "Negociación",
+        "won": "Ganado"
+      }
     },
     "board": {
       "dropDealHere": "Suelta un negocio aquí",
