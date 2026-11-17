@@ -27,7 +27,7 @@ interface MatchRow {
 export async function ingestDocument(
   db: SupabaseClient,
   accountId: string,
-  config: Pick<AiConfig, 'embeddingsApiKey'>,
+  config: Pick<AiConfig, 'embeddingsApiKey' | 'embeddingsProvider'>,
   documentId: string,
   content: string,
 ): Promise<void> {
@@ -52,7 +52,7 @@ export async function ingestDocument(
   let embedError: unknown = null
   if (config.embeddingsApiKey) {
     try {
-      embeddings = await embedTexts(config.embeddingsApiKey, chunks)
+      embeddings = await embedTexts(config.embeddingsProvider, config.embeddingsApiKey, chunks, 'document')
     } catch (err) {
       embedError = err
     }
@@ -84,7 +84,7 @@ export async function ingestDocument(
 export async function retrieveKnowledge(
   db: SupabaseClient,
   accountId: string,
-  config: Pick<AiConfig, 'embeddingsApiKey'>,
+  config: Pick<AiConfig, 'embeddingsApiKey' | 'embeddingsProvider'>,
   queryText: string,
   k = 5,
 ): Promise<string[]> {
@@ -110,7 +110,12 @@ export async function retrieveKnowledge(
   // Semantic path.
   if (config.embeddingsApiKey) {
     try {
-      const [queryEmbedding] = await embedTexts(config.embeddingsApiKey, [query])
+      const [queryEmbedding] = await embedTexts(
+        config.embeddingsProvider,
+        config.embeddingsApiKey,
+        [query],
+        'query',
+      )
       if (queryEmbedding) {
         const { data, error } = await db.rpc('match_ai_knowledge_semantic', {
           p_account_id: accountId,

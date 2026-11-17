@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireRole, toErrorResponse } from '@/lib/auth/account'
 import { daysAgoStart, lastNDayKeys, localDayKey } from '@/lib/dashboard/date-utils'
+import { loadQualityMetrics } from '@/lib/ai/quality-metrics'
 
 // Rows are aggregated in-process over a bounded window. An active
 // account writes a handful of rows per conversation, so 30 days sits
@@ -51,15 +52,32 @@ export async function GET(request: Request) {
     // chart (see lib/dashboard/date-utils).
     const since = daysAgoStart(days - 1)
 
-    const { data, error } = await supabase
-      .from('ai_usage_log')
-      .select(
-        'created_at, mode, provider, model, prompt_tokens, completion_tokens, total_tokens',
-      )
-      .eq('account_id', accountId)
-      .gte('created_at', since.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(MAX_ROWS + 1)
+    // Run alongside the usage-log query — independent tables, no
+    // reason to serialize them.
+    const [{ data, error }, quality] = await Promise.all([
+      supabase
+        .from('ai_usage_log')
+        .select(
+          'created_at, mode, provider, model, prompt_tokens, completion_tokens, total_tokens',
+        )
+        .eq('account_id', accountId)
+        .gte('created_at', since.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(MAX_ROWS + 1),
+      loadQualityMetrics(supabase, accountId, since).catch((err) => {
+        // Quality metrics are a secondary stat on this dashboard — a
+        // failure there shouldn't take down the token totals the admin
+        // actually came here for.
+        console.error('[ai/usage GET] quality metrics error:', err)
+        return {
+          resolvedWithoutHumanPct: null,
+          resolvedWithoutHumanSamples: 0,
+          avgFirstResponseMinutes: null,
+          avgFirstResponseSamples: 0,
+          truncated: false,
+        }
+      }),
+    ])
 
     if (error) {
       console.error('[ai/usage GET] fetch error:', error)
@@ -134,6 +152,13 @@ export async function GET(request: Request) {
       by_mode: byMode,
       by_model: byModel,
       daily: [...daily.values()],
+      quality: {
+        resolved_without_human_pct: quality.resolvedWithoutHumanPct,
+        resolved_without_human_samples: quality.resolvedWithoutHumanSamples,
+        avg_first_response_minutes: quality.avgFirstResponseMinutes,
+        avg_first_response_samples: quality.avgFirstResponseSamples,
+        truncated: quality.truncated,
+      },
     })
   } catch (err) {
     return toErrorResponse(err)

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, Bot, PencilLine } from 'lucide-react';
+import { BarChart3, Bot, PencilLine, CheckCircle2, Timer } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { canEditSettings } from '@/lib/auth/roles';
 import {
@@ -44,6 +44,21 @@ interface UsageResponse {
     tokens: number;
   }[];
   daily: { date: string; tokens: number; calls: number }[];
+  quality: {
+    resolved_without_human_pct: number | null;
+    resolved_without_human_samples: number;
+    avg_first_response_minutes: number | null;
+    avg_first_response_samples: number;
+    truncated: boolean;
+  };
+}
+
+function formatMinutes(mins: number): string {
+  if (mins < 1) return '<1m';
+  if (mins < 60) return `${Math.round(mins)}m`;
+  const hours = mins / 60;
+  if (hours < 24) return `${hours.toFixed(1)}h`;
+  return `${(hours / 24).toFixed(1)}d`;
 }
 
 const WINDOWS = [7, 30, 90] as const;
@@ -157,6 +172,55 @@ export function AiUsageCard() {
               />
             </div>
 
+            {(data.quality.resolved_without_human_samples > 0 ||
+              data.quality.avg_first_response_samples > 0) && (
+              <div>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">
+                  Quality
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Stat
+                    label="Resolved without a human"
+                    value={
+                      data.quality.resolved_without_human_pct === null
+                        ? '—'
+                        : `${Math.round(data.quality.resolved_without_human_pct)}%`
+                    }
+                    icon={CheckCircle2}
+                    hint={
+                      data.quality.resolved_without_human_samples > 0
+                        ? `of ${data.quality.resolved_without_human_samples} conversation${
+                            data.quality.resolved_without_human_samples === 1 ? '' : 's'
+                          } the bot touched`
+                        : undefined
+                    }
+                  />
+                  <Stat
+                    label="Avg. first response"
+                    value={
+                      data.quality.avg_first_response_minutes === null
+                        ? '—'
+                        : formatMinutes(data.quality.avg_first_response_minutes)
+                    }
+                    icon={Timer}
+                    hint={
+                      data.quality.avg_first_response_samples > 0
+                        ? `from ${data.quality.avg_first_response_samples} first repl${
+                            data.quality.avg_first_response_samples === 1 ? 'y' : 'ies'
+                          }`
+                        : undefined
+                    }
+                  />
+                </div>
+                {data.quality.truncated && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Showing a partial sample — conversation volume is high enough
+                    that only part of it was measured.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">
                 Tokens per day
@@ -217,10 +281,12 @@ function Stat({
   label,
   value,
   icon: Icon,
+  hint,
 }: {
   label: string;
   value: string;
   icon?: typeof Bot;
+  hint?: string;
 }) {
   return (
     <div className="rounded-md border border-border p-3">
@@ -231,6 +297,7 @@ function Stat({
       <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
         {value}
       </p>
+      {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }

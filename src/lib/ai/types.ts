@@ -25,11 +25,21 @@ export interface AiConfig {
    *  agent's `auth.users.id`, or null to leave it unassigned (drop into
    *  the shared queue). */
   handoffAgentId: string | null
-  /** Optional OpenAI-compatible key for embeddings. When set, the
-   *  knowledge base is embedded and semantic retrieval turns on; when
-   *  null, retrieval falls back to lexical full-text search. */
+  /** Optional key for embeddings, for whichever provider
+   *  `embeddingsProvider` names. When set, the knowledge base is
+   *  embedded and semantic retrieval turns on; when null, retrieval
+   *  falls back to lexical full-text search. */
   embeddingsApiKey: string | null
+  /** Which provider `embeddingsApiKey` belongs to — independent of
+   *  the account's main chat `provider` (e.g. an Anthropic-chat
+   *  account can still use a Gemini key here, since Anthropic has no
+   *  embeddings API of its own). Defaults to 'openai'. */
+  embeddingsProvider: EmbeddingsProvider
 }
+
+/** Provider for the knowledge-base embeddings key — a narrower set
+ *  than `AiProvider` since Anthropic has no embeddings endpoint. */
+export type EmbeddingsProvider = 'openai' | 'gemini'
 
 /** A single conversation turn in the shape both providers accept. */
 export interface ChatMessage {

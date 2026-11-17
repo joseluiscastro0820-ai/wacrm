@@ -27,7 +27,7 @@ import {
 import { SettingsPanelHead } from './settings-panel-head';
 import { AiKnowledgeCard } from './ai-knowledge';
 import { AI_PROVIDER_DEFAULT_MODEL } from '@/lib/ai/defaults';
-import type { AiProvider } from '@/lib/ai/types';
+import type { AiProvider, EmbeddingsProvider } from '@/lib/ai/types';
 import type { AccountMember } from '@/types';
 import { fetchAccountMembers, memberLabel } from '@/lib/account/members';
 import { useTranslations } from 'next-intl';
@@ -47,6 +47,16 @@ const PROVIDER_LABEL: Record<AiProvider, string> = {
 const KEY_PLACEHOLDER: Record<AiProvider, string> = {
   openai: 'sk-...',
   anthropic: 'sk-ant-...',
+  gemini: 'AIza...',
+};
+
+const EMBEDDINGS_PROVIDER_LABEL: Record<EmbeddingsProvider, string> = {
+  openai: 'OpenAI',
+  gemini: 'Google Gemini',
+};
+
+const EMBEDDINGS_KEY_PLACEHOLDER: Record<EmbeddingsProvider, string> = {
+  openai: 'sk-...',
   gemini: 'AIza...',
 };
 
@@ -70,6 +80,8 @@ export function AiConfig() {
   const [embeddingsKey, setEmbeddingsKey] = useState('');
   const [embeddingsKeyEdited, setEmbeddingsKeyEdited] = useState(false);
   const [hasStoredEmbeddingsKey, setHasStoredEmbeddingsKey] = useState(false);
+  const [embeddingsProvider, setEmbeddingsProvider] =
+    useState<EmbeddingsProvider>('openai');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [isActive, setIsActive] = useState(false);
   const [autoReplyEnabled, setAutoReplyEnabled] = useState(false);
@@ -108,6 +120,7 @@ export function AiConfig() {
         setHasStoredEmbeddingsKey(Boolean(data.has_embeddings_key));
         setEmbeddingsKey(data.has_embeddings_key ? MASKED_KEY : '');
         setEmbeddingsKeyEdited(false);
+        setEmbeddingsProvider(data.embeddings_provider === 'gemini' ? 'gemini' : 'openai');
       }
     } catch {
       toast.error(t('loadFailed'));
@@ -149,6 +162,7 @@ export function AiConfig() {
     model: model.trim(),
     api_key: keyPayload(),
     embeddings_api_key: embeddingsKeyPayload(),
+    embeddings_provider: embeddingsProvider,
     system_prompt: systemPrompt.trim() || null,
     is_active: isActive,
     auto_reply_enabled: autoReplyEnabled,
@@ -358,27 +372,46 @@ export function AiConfig() {
                   {t('optionalSemanticSearch')}
                 </span>
               </Label>
-              <Input
-                id="ai-embeddings-key"
-                type="password"
-                value={embeddingsKey}
-                onChange={(e) => {
-                  setEmbeddingsKey(e.target.value);
-                  setEmbeddingsKeyEdited(true);
-                }}
-                onFocus={() => {
-                  if (!embeddingsKeyEdited && hasStoredEmbeddingsKey) {
-                    setEmbeddingsKey('');
+              <div className="grid gap-2 sm:grid-cols-[180px_1fr]">
+                <Select
+                  value={embeddingsProvider}
+                  onValueChange={(v) => setEmbeddingsProvider(v as EmbeddingsProvider)}
+                  disabled={disabled}
+                >
+                  <SelectTrigger aria-label={t('embeddingsProvider')}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="openai">
+                      {EMBEDDINGS_PROVIDER_LABEL.openai}
+                    </SelectItem>
+                    <SelectItem value="gemini">
+                      {EMBEDDINGS_PROVIDER_LABEL.gemini}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  id="ai-embeddings-key"
+                  type="password"
+                  value={embeddingsKey}
+                  onChange={(e) => {
+                    setEmbeddingsKey(e.target.value);
                     setEmbeddingsKeyEdited(true);
-                  }
-                }}
-                placeholder="sk-... (OpenAI)"
-                disabled={disabled}
-                autoComplete="off"
-              />
+                  }}
+                  onFocus={() => {
+                    if (!embeddingsKeyEdited && hasStoredEmbeddingsKey) {
+                      setEmbeddingsKey('');
+                      setEmbeddingsKeyEdited(true);
+                    }
+                  }}
+                  placeholder={EMBEDDINGS_KEY_PLACEHOLDER[embeddingsProvider]}
+                  disabled={disabled}
+                  autoComplete="off"
+                />
+              </div>
               <p className="text-xs text-muted-foreground">
                 {t('embeddingsHint', {
-                  sameKeyText: provider === 'openai' ? t('sameKeyText') : '',
+                  sameKeyText: provider === embeddingsProvider ? t('sameKeyText') : '',
                 })}
               </p>
             </div>

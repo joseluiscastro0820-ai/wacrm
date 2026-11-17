@@ -70,15 +70,13 @@ export async function POST(request: Request) {
       )
     }
 
-    const { key: embeddingsApiKey, corrupt } = await loadEmbeddingsKey(
-      supabase,
-      accountId,
-    )
+    const { key: embeddingsApiKey, provider: embeddingsProvider, corrupt } =
+      await loadEmbeddingsKey(supabase, accountId)
     try {
       await ingestDocument(
         supabase,
         accountId,
-        { embeddingsApiKey },
+        { embeddingsApiKey, embeddingsProvider },
         doc.id,
         content,
       )

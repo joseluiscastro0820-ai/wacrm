@@ -30,7 +30,7 @@ export async function GET() {
       // `api_key` is selected only to derive `has_key` — it is stripped
       // out below and never returned to the client.
       .select(
-        'provider, model, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, handoff_agent_id, api_key, embeddings_api_key',
+        'provider, model, system_prompt, is_active, auto_reply_enabled, auto_reply_max_per_conversation, handoff_agent_id, api_key, embeddings_api_key, embeddings_provider',
       )
       .eq('account_id', accountId)
       .maybeSingle()
@@ -125,12 +125,29 @@ export async function POST(request: Request) {
         : ''
     const clearEmbeddingsKey = body.embeddings_api_key === null
 
+    // Which provider the embeddings key (new or existing) belongs to.
+    // The settings form always sends this alongside `embeddings_api_key`
+    // when the admin edits either, so the two never drift apart; absent
+    // means "unchanged" (toggling some other setting).
+    const rawEmbeddingsProvider =
+      typeof body.embeddings_provider === 'string' ? body.embeddings_provider : undefined
+    if (
+      rawEmbeddingsProvider !== undefined &&
+      rawEmbeddingsProvider !== 'openai' &&
+      rawEmbeddingsProvider !== 'gemini'
+    ) {
+      return bad('embeddings_provider must be "openai" or "gemini"')
+    }
+
     // Reuse the stored key when the form didn't send a fresh one.
     const { data: existing } = await supabase
       .from('ai_configs')
-      .select('id, provider, model, api_key')
+      .select('id, provider, model, api_key, embeddings_provider')
       .eq('account_id', accountId)
       .maybeSingle()
+
+    const embeddingsProvider: 'openai' | 'gemini' =
+      rawEmbeddingsProvider ?? (existing?.embeddings_provider === 'gemini' ? 'gemini' : 'openai')
 
     let apiKeyPlain: string
     if (rawKey) {
@@ -167,6 +184,7 @@ export async function POST(request: Request) {
           autoReplyMaxPerConversation: maxPer,
           handoffAgentId: null,
           embeddingsApiKey: null,
+          embeddingsProvider: 'openai',
         })
       } catch (err) {
         if (err instanceof AiError) {
@@ -184,7 +202,7 @@ export async function POST(request: Request) {
     // embed), same "verify before save" discipline as the chat key.
     if (rawEmbeddingsKey) {
       try {
-        await embedTexts(rawEmbeddingsKey, ['ping'])
+        await embedTexts(embeddingsProvider, rawEmbeddingsKey, ['ping'], 'document')
       } catch (err) {
         if (err instanceof AiError) {
           return NextResponse.json(
@@ -213,6 +231,9 @@ export async function POST(request: Request) {
       shared.embeddings_api_key = encrypt(rawEmbeddingsKey)
     } else if (clearEmbeddingsKey) {
       shared.embeddings_api_key = null
+    }
+    if (rawEmbeddingsProvider !== undefined) {
+      shared.embeddings_provider = rawEmbeddingsProvider
     }
 
     if (existing) {
