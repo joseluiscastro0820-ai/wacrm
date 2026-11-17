@@ -20,8 +20,13 @@ const MAX_QUOTE_LEN = 160
 export function buildHandoffSummary(args: {
   messages: ChatMessage[]
   replyCount: number
+  /** Optional extra context for why THIS handoff happened — e.g. the
+   *  pre-send guardrail's failure reason, when it's the guardrail
+   *  (not the model itself) that bailed on a drafted reply. Appended
+   *  in parens after the customer quote when present. */
+  note?: string
 }): string {
-  const { messages, replyCount } = args
+  const { messages, replyCount, note } = args
 
   const lastCustomer = [...messages]
     .reverse()
@@ -34,10 +39,11 @@ export function buildHandoffSummary(args: {
 
   const base = `🤖 AI agent handed off ${replies}.`
 
-  if (!lastCustomer) return base
+  const summary = lastCustomer
+    ? `${base} Last customer message: “${truncate(lastCustomer.content.trim(), MAX_QUOTE_LEN)}”`
+    : base
 
-  const quote = truncate(lastCustomer.content.trim(), MAX_QUOTE_LEN)
-  return `${base} Last customer message: “${quote}”`
+  return note ? `${summary} (${note})` : summary
 }
 
 function truncate(text: string, max: number): string {

@@ -8,6 +8,7 @@ import { buildHandoffSummary } from './handoff'
 import { logAiUsage } from './usage'
 import { latestUserMessage } from './query'
 import { buildAiTools, executeAiTool } from './tools'
+import { evaluateReply } from './evaluate'
 import { engineSendText } from '@/lib/flows/meta-send'
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit'
 import { AiError, type GenerateResult } from './types'
@@ -168,7 +169,7 @@ export async function dispatchInboundToAiReply(
       hasTools: tools.length > 0,
     })
 
-    const { text, handoff, usage } = await generateReplyWithRetry({
+    const { text, handoff: modelHandoff, usage } = await generateReplyWithRetry({
       config,
       systemPrompt,
       messages,
@@ -194,17 +195,58 @@ export async function dispatchInboundToAiReply(
       usage,
     })
 
-    if (handoff || !text) {
-      // The model can't (or shouldn't) answer — stop auto-replying on
-      // this thread and hand it to a human. We (a) pause the bot here
-      // (sticky until re-enabled), (b) route the conversation to the
-      // configured handoff agent — null leaves it in the shared queue —
-      // and (c) leave a short internal note so whoever picks it up has
-      // context. Assigning fires the `on_conversation_assigned` trigger,
-      // which notifies the agent.
+    let handoff = modelHandoff || !text
+    let handoffNote: string | undefined
+
+    // Guardrail (evaluator-optimizer): the model DID produce a candidate
+    // reply, but before it goes out, one more cheap check — does it
+    // follow the business's own instructions, does it answer what the
+    // customer asked, does it state a fact the conversation/knowledge
+    // base doesn't back up? A failure here hands off exactly like the
+    // model's own [[HANDOFF]] path above, instead of sending a reply
+    // nobody reviewed. Skipped when the model already declined — a
+    // handoff it already chose doesn't need re-checking.
+    if (!handoff) {
+      const evaluation = await evaluateReply({
+        config,
+        businessPrompt: config.systemPrompt,
+        knowledge,
+        messages,
+        draftReply: text,
+      })
+      // Logged under the same 'auto_reply' bucket as the generation it's
+      // checking — `ai_usage_log.mode` is a DB CHECK constrained to
+      // ('auto_reply', 'draft'), and this one extra, small call doesn't
+      // warrant a migration for its own bucket. It does mean the eval
+      // call's cost is folded into the main generation's number in
+      // reporting, not broken out separately.
+      void logAiUsage(db, {
+        accountId,
+        conversationId,
+        mode: 'auto_reply',
+        provider: config.provider,
+        model: config.model,
+        usage: evaluation.usage,
+      })
+      if (!evaluation.result.ok) {
+        handoff = true
+        handoffNote = evaluation.result.reason
+      }
+    }
+
+    if (handoff) {
+      // The model can't (or shouldn't) answer, or the guardrail above
+      // rejected its draft — stop auto-replying on this thread and hand
+      // it to a human. We (a) pause the bot here (sticky until
+      // re-enabled), (b) route the conversation to the configured
+      // handoff agent — null leaves it in the shared queue — and (c)
+      // leave a short internal note so whoever picks it up has context.
+      // Assigning fires the `on_conversation_assigned` trigger, which
+      // notifies the agent.
       const summary = buildHandoffSummary({
         messages,
         replyCount: conv.ai_reply_count ?? 0,
+        note: handoffNote,
       })
       const update: Record<string, unknown> = {
         ai_autoreply_disabled: true,

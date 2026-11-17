@@ -7,6 +7,7 @@ const h = vi.hoisted(() => ({
   buildConversationContext: vi.fn(),
   retrieveKnowledge: vi.fn(),
   generateReply: vi.fn(),
+  evaluateReply: vi.fn(),
   engineSendText: vi.fn(),
   state: {
     conv: null as Record<string, unknown> | null,
@@ -21,6 +22,7 @@ vi.mock('./config', () => ({ loadAiConfig: h.loadAiConfig }))
 vi.mock('./context', () => ({ buildConversationContext: h.buildConversationContext }))
 vi.mock('./knowledge', () => ({ retrieveKnowledge: h.retrieveKnowledge }))
 vi.mock('./generate', () => ({ generateReply: h.generateReply }))
+vi.mock('./evaluate', () => ({ evaluateReply: h.evaluateReply }))
 vi.mock('@/lib/flows/meta-send', () => ({ engineSendText: h.engineSendText }))
 vi.mock('./admin-client', () => ({
   supabaseAdmin: () => ({
@@ -95,6 +97,7 @@ beforeEach(() => {
   h.buildConversationContext.mockResolvedValue([{ role: 'user', content: 'hi' }])
   h.retrieveKnowledge.mockResolvedValue([])
   h.generateReply.mockResolvedValue({ text: 'Hello!', handoff: false })
+  h.evaluateReply.mockResolvedValue({ result: { ok: true }, usage: null })
   h.engineSendText.mockResolvedValue({ whatsapp_message_id: 'm1' })
 })
 
@@ -208,5 +211,44 @@ describe('dispatchInboundToAiReply — handoff', () => {
       ai_autoreply_disabled: true,
       assigned_agent_id: 'agent-7',
     })
+  })
+
+  it('does not run the guardrail when the model already handed off', async () => {
+    h.generateReply.mockResolvedValue({ text: '', handoff: true })
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.evaluateReply).not.toHaveBeenCalled()
+  })
+})
+
+describe('dispatchInboundToAiReply — pre-send guardrail', () => {
+  it('sends when the guardrail passes the draft', async () => {
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.evaluateReply).toHaveBeenCalledWith(
+      expect.objectContaining({ draftReply: 'Hello!' }),
+    )
+    expect(h.engineSendText).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Hello!' }),
+    )
+  })
+
+  it('hands off instead of sending when the guardrail rejects the draft', async () => {
+    h.evaluateReply.mockResolvedValue({
+      result: { ok: false, reason: 'invents a price not in the knowledge base' },
+      usage: null,
+    })
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.engineSendText).not.toHaveBeenCalled()
+    expect(h.state.rpcCalls).toHaveLength(0)
+    expect(h.state.updatePayload).toMatchObject({ ai_autoreply_disabled: true })
+    expect(h.state.updatePayload?.ai_handoff_summary).toContain(
+      'invents a price not in the knowledge base',
+    )
+  })
+
+  it('hands off without a note when the guardrail rejects with no reason', async () => {
+    h.evaluateReply.mockResolvedValue({ result: { ok: false }, usage: null })
+    await dispatchInboundToAiReply(ARGS)
+    expect(h.engineSendText).not.toHaveBeenCalled()
+    expect(h.state.updatePayload).toMatchObject({ ai_autoreply_disabled: true })
   })
 })

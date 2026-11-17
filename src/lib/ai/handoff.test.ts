@@ -63,4 +63,24 @@ describe('buildHandoffSummary', () => {
     })
     expect(summary).toBe('🤖 AI agent handed off without replying.')
   })
+
+  it('appends an optional note in parens after the quote', () => {
+    const summary = buildHandoffSummary({
+      messages: [{ role: 'user', content: 'what is the price?' }],
+      replyCount: 1,
+      note: 'invents a price not in the knowledge base',
+    })
+    expect(summary).toBe(
+      '🤖 AI agent handed off after 1 reply. Last customer message: “what is the price?” (invents a price not in the knowledge base)',
+    )
+  })
+
+  it('appends the note even with no customer message to quote', () => {
+    const summary = buildHandoffSummary({
+      messages: [{ role: 'assistant', content: 'greeting' }],
+      replyCount: 0,
+      note: 'quality check failed to run',
+    })
+    expect(summary).toBe('🤖 AI agent handed off without replying. (quality check failed to run)')
+  })
 })
