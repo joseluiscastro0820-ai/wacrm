@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Coins, Loader2 } from "lucide-react";
+import { Coins, Loader2, Truck } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { CURRENCIES } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -33,6 +34,7 @@ export function DealsSettings() {
   const {
     accountId,
     defaultCurrency,
+    defaultDeliveryFee,
     canEditSettings,
     profileLoading,
     refreshProfile,
@@ -67,6 +69,40 @@ export function DealsSettings() {
     await refreshProfile();
     setSaving(false);
     toast.success(t("saveSuccess"));
+  }
+
+  // Default delivery fee — its own input/dirty/save, independent of
+  // the currency control above. "" means "no default configured"
+  // (writes null), matching deals.delivery_fee's own null = unset.
+  const [deliveryFee, setDeliveryFee] = useState(
+    defaultDeliveryFee === null ? "" : String(defaultDeliveryFee),
+  );
+  const [savingDeliveryFee, setSavingDeliveryFee] = useState(false);
+
+  useEffect(() => {
+    setDeliveryFee(defaultDeliveryFee === null ? "" : String(defaultDeliveryFee));
+  }, [defaultDeliveryFee]);
+
+  const deliveryFeeDirty =
+    deliveryFee !== (defaultDeliveryFee === null ? "" : String(defaultDeliveryFee));
+
+  async function handleSaveDeliveryFee() {
+    if (!accountId || !deliveryFeeDirty) return;
+    setSavingDeliveryFee(true);
+    const { error } = await supabase
+      .from("accounts")
+      .update({
+        default_delivery_fee: deliveryFee.trim() === "" ? null : parseFloat(deliveryFee) || 0,
+      })
+      .eq("id", accountId);
+    if (error) {
+      toast.error(t("saveDeliveryFeeFailed"));
+      setSavingDeliveryFee(false);
+      return;
+    }
+    await refreshProfile();
+    setSavingDeliveryFee(false);
+    toast.success(t("saveDeliveryFeeSuccess"));
   }
 
   return (
@@ -114,6 +150,53 @@ export function DealsSettings() {
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {saving ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  {t("saving")}
+                </>
+              ) : (
+                t("save")
+              )}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <Truck className="size-4 text-primary" />
+            {t("defaultDeliveryFee")}
+          </CardTitle>
+          <CardDescription className="text-muted-foreground">
+            {t("defaultDeliveryFeeDesc")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2 sm:max-w-xs">
+            <Label className="text-muted-foreground">{t("deliveryFeeLabel")}</Label>
+            <Input
+              type="number"
+              value={deliveryFee}
+              onChange={(e) => setDeliveryFee(e.target.value)}
+              placeholder={t("deliveryFeePlaceholder")}
+              disabled={!canEditSettings || profileLoading}
+              className="border-border bg-muted text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            />
+            {!canEditSettings && (
+              <p className="text-xs text-muted-foreground">
+                {t("adminOnlyHint")}
+              </p>
+            )}
+          </div>
+
+          {canEditSettings && (
+            <Button
+              onClick={handleSaveDeliveryFee}
+              disabled={savingDeliveryFee || !deliveryFeeDirty}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {savingDeliveryFee ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
                   {t("saving")}

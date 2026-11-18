@@ -76,7 +76,7 @@ export function DealForm({
 }: DealFormProps) {
   const t = useTranslations("Pipelines.form");
   const supabase = createClient();
-  const { accountId, defaultCurrency } = useAuth();
+  const { accountId, defaultCurrency, defaultDeliveryFee } = useAuth();
 
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
@@ -115,9 +115,14 @@ export function DealForm({
       setTitle(deal.title);
       setValue(String(deal.value ?? ""));
       setCurrency(deal.currency || defaultCurrency);
+      // Fall back to the account's configured default (Settings) when
+      // this deal has no delivery fee of its own yet — same "pedido
+      // never explicitly set it" case as a brand-new deal, below.
       setDeliveryFee(
         deal.delivery_fee === null || deal.delivery_fee === undefined
-          ? ""
+          ? defaultDeliveryFee === null
+            ? ""
+            : String(defaultDeliveryFee)
           : String(deal.delivery_fee),
       );
       // contact_id is nullable when the contact has been deleted
@@ -132,7 +137,7 @@ export function DealForm({
       setTitle("");
       setValue("");
       setCurrency(defaultCurrency);
-      setDeliveryFee("");
+      setDeliveryFee(defaultDeliveryFee === null ? "" : String(defaultDeliveryFee));
       setContactId("");
       setStageId(defaultStageId || stages[0]?.id || "");
       setAssignedTo("");
@@ -140,7 +145,7 @@ export function DealForm({
       setNotes("");
       setItems([]);
     }
-  }, [open, deal, defaultStageId, stages, defaultCurrency]);
+  }, [open, deal, defaultStageId, stages, defaultCurrency, defaultDeliveryFee]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Load supporting data once the sheet is open

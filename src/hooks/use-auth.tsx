@@ -43,6 +43,9 @@ interface AccountSummary {
   /** Default deal currency (ISO-4217). NOT NULL DEFAULT 'USD' in the
    *  DB (migration 021); narrowed to DEFAULT_CURRENCY when absent. */
   default_currency: string;
+  /** Default deals.delivery_fee for new pedidos (migration
+   *  add_default_delivery_fee). Null = no default configured. */
+  default_delivery_fee: number | null;
 }
 
 /**
@@ -116,6 +119,9 @@ interface AuthContextValue {
    *  while loading or when no account is resolved, so callers can use
    *  it unconditionally. */
   defaultCurrency: string;
+  /** Account default delivery fee for new pedidos. Null while loading,
+   *  when no account is resolved, or when nothing was configured. */
+  defaultDeliveryFee: number | null;
   /** True if `accountRole === 'owner'`. */
   isOwner: boolean;
   /** True if `accountRole === 'admin'` (does NOT include owner — use canManageMembers for "admin or above"). */
@@ -239,7 +245,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .from("accounts")
             // default_currency added in migration 021; narrowed to the
             // USD fallback below for older schemas where it reads null.
-            .select("id, name, default_currency")
+            // default_delivery_fee added in migration
+            // add_default_delivery_fee; genuinely nullable (no sensible
+            // non-null fallback — "no default configured" is valid).
+            .select("id, name, default_currency, default_delivery_fee")
             .eq("id", data.account_id)
             .maybeSingle();
           if (accountErr) {
@@ -254,6 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               id: account.id,
               name: account.name,
               default_currency: account.default_currency ?? DEFAULT_CURRENCY,
+              default_delivery_fee: account.default_delivery_fee ?? null,
             };
           }
         }
@@ -436,6 +446,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshProfile,
         account,
         defaultCurrency: account?.default_currency ?? DEFAULT_CURRENCY,
+        defaultDeliveryFee: account?.default_delivery_fee ?? null,
         accountStatus,
         accountStatusDetail: statusDetail,
         ...derived,
@@ -468,6 +479,7 @@ export function useAuth(): AuthContextValue {
       refreshProfile: async () => {},
       account: null,
       defaultCurrency: DEFAULT_CURRENCY,
+      defaultDeliveryFee: null,
       // Outside the provider there is nothing to resolve yet — 'loading'
       // keeps the access alert from firing on, say, the login page.
       accountStatus: "loading",

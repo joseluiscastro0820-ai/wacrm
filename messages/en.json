@@ -1816,7 +1816,13 @@
       "save": "Save",
       "saving": "Saving...",
       "saveFailed": "Failed to save default currency",
-      "saveSuccess": "Default currency updated"
+      "saveSuccess": "Default currency updated",
+      "defaultDeliveryFee": "Default delivery fee",
+      "defaultDeliveryFeeDesc": "Pre-fills the delivery-fee field on every new deal. Agents can still edit it per deal when the actual cost differs.",
+      "deliveryFeeLabel": "Delivery fee",
+      "deliveryFeePlaceholder": "No default",
+      "saveDeliveryFeeFailed": "Failed to save the default delivery fee",
+      "saveDeliveryFeeSuccess": "Default delivery fee updated"
     },
     "aiConfig": {
       "title": "Agent setup",

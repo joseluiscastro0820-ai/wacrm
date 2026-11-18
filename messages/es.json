@@ -1816,7 +1816,13 @@
       "save": "Guardar",
       "saving": "Guardando...",
       "saveFailed": "Error al guardar la moneda predeterminada",
-      "saveSuccess": "Moneda predeterminada actualizada"
+      "saveSuccess": "Moneda predeterminada actualizada",
+      "defaultDeliveryFee": "Costo de domicilio por defecto",
+      "defaultDeliveryFeeDesc": "Autocompleta el campo de costo de domicilio en cada pedido nuevo. Los agentes igual pueden editarlo por pedido cuando el costo real sea distinto.",
+      "deliveryFeeLabel": "Costo de domicilio",
+      "deliveryFeePlaceholder": "Sin valor por defecto",
+      "saveDeliveryFeeFailed": "Error al guardar el costo de domicilio por defecto",
+      "saveDeliveryFeeSuccess": "Costo de domicilio por defecto actualizado"
     },
     "aiConfig": {
       "title": "Configuración del agente",
