@@ -2098,5 +2098,10 @@
     "toastReviewFailed": "요청을 업데이트하지 못했습니다",
     "toastApproved": "반품이 승인되어 재고가 업데이트되었습니다",
     "toastRejected": "반품이 거절되었습니다"
+  },
+  "Manifest": {
+    "name": "WhatsApp용 CRM 템플릿",
+    "shortName": "Agent Free",
+    "description": "자체 호스팅 가능한 WhatsApp용 CRM 템플릿입니다."
   }
 }

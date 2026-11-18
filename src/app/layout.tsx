@@ -6,6 +6,7 @@ import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { ThemedToaster } from "@/components/themed-toaster";
+import { PwaRegister } from "@/components/pwa-register";
 import {
   DEFAULT_MODE,
   DEFAULT_THEME,
@@ -113,6 +114,7 @@ export default async function RootLayout({
           <ThemeProvider>
             {children}
             <ThemedToaster />
+            <PwaRegister />
           </ThemeProvider>
         </LocaleProvider>
       </body>

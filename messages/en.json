@@ -2098,5 +2098,10 @@
     "toastReviewFailed": "Failed to update the request",
     "toastApproved": "Return approved, stock updated",
     "toastRejected": "Return rejected"
+  },
+  "Manifest": {
+    "name": "Agent Free WhatsApp",
+    "shortName": "Agent Free",
+    "description": "Self-hostable CRM template for WhatsApp."
   }
 }

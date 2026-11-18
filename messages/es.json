@@ -2098,5 +2098,10 @@
     "toastReviewFailed": "No se pudo actualizar la solicitud",
     "toastApproved": "Devolución aprobada, stock actualizado",
     "toastRejected": "Devolución rechazada"
+  },
+  "Manifest": {
+    "name": "Agent Free WhatsApp",
+    "shortName": "Agent Free",
+    "description": "Plantilla de CRM autoalojable para WhatsApp."
   }
 }
