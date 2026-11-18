@@ -679,7 +679,10 @@
       "itemsRemove": "제거",
       "itemsOverStock": "재고 {count}개만 남음",
       "itemsValueFromItems": "추가된 제품을 기준으로 계산됨",
-      "toastFailedItems": "딜은 저장되었지만 제품을 저장하지 못했습니다"
+      "toastFailedItems": "딜은 저장되었지만 제품을 저장하지 못했습니다",
+      "deliveryFee": "배송비",
+      "deliveryFeePlaceholder": "선택 사항",
+      "dispatchTermsSent": "주문 조건을 고객에게 이미 전송했습니다"
     },
     "settings": {
       "managePipeline": "파이프라인 관리",

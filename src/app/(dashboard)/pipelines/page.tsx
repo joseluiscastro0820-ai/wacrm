@@ -30,6 +30,7 @@ import { useCan } from "@/hooks/use-can";
 import { useAuth } from "@/hooks/use-auth";
 import { GatedButton } from "@/components/ui/gated-button";
 import { useTranslations } from "next-intl";
+import { maybeSendDispatchTerms } from "@/lib/deals/dispatch-terms";
 
 // Pipeline creation is admin-class (settings-tier write under
 // the new RLS); deal creation is operational and only requires
@@ -234,7 +235,11 @@ export default function PipelinesPage() {
       if (error) {
         toast.error(t("toastFailedMoveDeal"));
         refreshDeals();
+        return;
       }
+      // Fire-and-forget: a WhatsApp hiccup here must never undo or
+      // block a stage move that already succeeded.
+      void maybeSendDispatchTerms(supabase, dealId, newStageId);
     },
     [supabase, refreshDeals, t],
   );

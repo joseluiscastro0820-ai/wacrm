@@ -33,9 +33,11 @@ import {
   DollarSign,
   Loader2,
   Plus,
+  Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { maybeSendDispatchTerms } from "@/lib/deals/dispatch-terms";
 
 /**
  * A deal_items row being edited in this form. `key` is a client-only
@@ -79,6 +81,7 @@ export function DealForm({
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
   const [currency, setCurrency] = useState(defaultCurrency);
+  const [deliveryFee, setDeliveryFee] = useState("");
   const [contactId, setContactId] = useState("");
   const [stageId, setStageId] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
@@ -112,6 +115,11 @@ export function DealForm({
       setTitle(deal.title);
       setValue(String(deal.value ?? ""));
       setCurrency(deal.currency || defaultCurrency);
+      setDeliveryFee(
+        deal.delivery_fee === null || deal.delivery_fee === undefined
+          ? ""
+          : String(deal.delivery_fee),
+      );
       // contact_id is nullable when the contact has been deleted
       // (migration 004: ON DELETE SET NULL). "" means "no selection".
       setContactId(deal.contact_id ?? "");
@@ -124,6 +132,7 @@ export function DealForm({
       setTitle("");
       setValue("");
       setCurrency(defaultCurrency);
+      setDeliveryFee("");
       setContactId("");
       setStageId(defaultStageId || stages[0]?.id || "");
       setAssignedTo("");
@@ -259,6 +268,7 @@ export function DealForm({
       title: title.trim(),
       value: parseFloat(value) || 0,
       currency,
+      delivery_fee: deliveryFee.trim() === "" ? null : parseFloat(deliveryFee) || 0,
       contact_id: contactId,
       pipeline_id: pipelineId,
       stage_id: stageId,
@@ -331,6 +341,10 @@ export function DealForm({
 
     setSaving(false);
     toast.success(deal ? t("toastUpdated") : t("toastCreated"));
+    // Fire-and-forget: a WhatsApp hiccup here must never block the
+    // save the agent is already waiting on, and it's a no-op unless
+    // `stageId` is flagged (and only once per deal — see the helper).
+    if (dealId) void maybeSendDispatchTerms(supabase, dealId, stageId);
     onOpenChange(false);
     onSaved();
   }
@@ -539,6 +553,25 @@ export function DealForm({
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label className="text-muted-foreground">{t("deliveryFee")}</Label>
+              <div className="relative">
+                <Truck className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="number"
+                  value={deliveryFee}
+                  onChange={(e) => setDeliveryFee(e.target.value)}
+                  placeholder={t("deliveryFeePlaceholder")}
+                  className="border-border bg-muted pl-7 text-foreground"
+                />
+              </div>
+              {deal?.dispatch_terms_sent_at && (
+                <p className="text-xs text-muted-foreground">
+                  {t("dispatchTermsSent")}
+                </p>
+              )}
             </div>
 
             <div className="grid gap-2">

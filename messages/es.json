@@ -693,7 +693,10 @@
       "itemsRemove": "Quitar",
       "itemsOverStock": "solo quedan {count} en stock",
       "itemsValueFromItems": "Calculado desde los productos agregados",
-      "toastFailedItems": "El negocio se guardó, pero fallaron sus productos"
+      "toastFailedItems": "El negocio se guardó, pero fallaron sus productos",
+      "deliveryFee": "Costo de domicilio",
+      "deliveryFeePlaceholder": "Opcional",
+      "dispatchTermsSent": "Ya se enviaron las condiciones del pedido al cliente"
     },
     "settings": {
       "managePipeline": "Gestionar pipeline",

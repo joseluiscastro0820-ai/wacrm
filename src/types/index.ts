@@ -415,6 +415,13 @@ export interface PipelineStage {
   name: string;
   position: number;
   color: string;
+  /**
+   * When true, moving a deal INTO this stage fires the automatic
+   * "condiciones del pedido" WhatsApp note once per deal (see
+   * Deal.dispatch_terms_sent_at) — decoupled from the stage's display
+   * name/position so renaming it never breaks the automation.
+   */
+  send_dispatch_terms: boolean;
   created_at: string;
 }
 
@@ -438,6 +445,10 @@ export interface Deal {
   notes?: string;
   expected_close_date?: string;
   status?: DealStatus;
+  /** Costo del domicilio/envío, aparte del valor de los productos. Null = no aplica/no registrado. */
+  delivery_fee?: number | null;
+  /** Cuándo se envió (una sola vez) el mensaje de condiciones del pedido. Null = aún no enviado. */
+  dispatch_terms_sent_at?: string | null;
   created_at: string;
   updated_at?: string;
   contact?: Contact;

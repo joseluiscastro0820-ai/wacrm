@@ -693,7 +693,10 @@
       "itemsRemove": "Remove",
       "itemsOverStock": "only {count} in stock",
       "itemsValueFromItems": "Calculated from the added products",
-      "toastFailedItems": "Saved the deal, but failed to save its products"
+      "toastFailedItems": "Saved the deal, but failed to save its products",
+      "deliveryFee": "Delivery fee",
+      "deliveryFeePlaceholder": "Optional",
+      "dispatchTermsSent": "Order terms already sent to the customer"
     },
     "settings": {
       "managePipeline": "Manage Pipeline",
