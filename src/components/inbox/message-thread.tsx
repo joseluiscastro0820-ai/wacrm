@@ -278,7 +278,7 @@ export function MessageThread({
   });
 
   const conversationId = conversation?.id;
-  const hasUnread = (conversation?.unread_count ?? 0) > 0;
+  const unreadCount = conversation?.unread_count ?? 0;
 
   const mediaMessageId =
     openMedia && openMedia.conversationId === conversationId
@@ -296,7 +296,7 @@ export function MessageThread({
   // Fetch messages whenever the selected conversation changes. Kept
   // separate from the unread-reset effect so that incoming messages
   // arriving while the thread is open don't trigger a full refetch —
-  // they only flip hasUnread, which only the reset effect listens to.
+  // they only flip unreadCount, which only the reset effect listens to.
   useEffect(() => {
     if (!conversationId) return;
 
@@ -448,10 +448,16 @@ export function MessageThread({
   // unread_count to N+1; the realtime UPDATE propagates it into the
   // client, which re-runs this effect and flips it back to 0).
   //
-  // Guarding on hasUnread prevents the eq-update loop: once unread_count
-  // is 0 the condition is false, so no further UPDATE is issued.
+  // Depends on the raw count, not a derived "is it unread" boolean: two
+  // messages landing back-to-back bump the server 0 -> 1 -> 2, and a
+  // boolean dependency sees "true" both times, so React never detects a
+  // change and skips the second reset — the row is left stuck unread in
+  // the DB, which only becomes visible once the agent leaves the thread
+  // (the badge reappears in the list even though they read everything).
+  // The numeric dependency re-fires on every distinct count, 1 -> 2
+  // included, and still stops once it reaches 0.
   useEffect(() => {
-    if (!conversationId || !hasUnread) return;
+    if (!conversationId || unreadCount === 0) return;
     const supabase = createClient();
     supabase
       .from("conversations")
@@ -460,7 +466,7 @@ export function MessageThread({
       .then(({ error }) => {
         if (error) console.error("Failed to reset unread_count:", error);
       });
-  }, [conversationId, hasUnread]);
+  }, [conversationId, unreadCount]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
