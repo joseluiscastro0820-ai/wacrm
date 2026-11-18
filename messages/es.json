@@ -678,7 +678,14 @@
       "toastMarkedLost": "Marcado como perdido",
       "toastReopened": "Negocio reabierto",
       "toastFailedDelete": "Error al eliminar el negocio",
-      "toastDeleted": "Negocio eliminado"
+      "toastDeleted": "Negocio eliminado",
+      "itemsLabel": "Productos",
+      "itemsEmpty": "Sin productos agregados",
+      "itemsSelectProduct": "Selecciona un producto",
+      "itemsRemove": "Quitar",
+      "itemsOverStock": "solo quedan {count} en stock",
+      "itemsValueFromItems": "Calculado desde los productos agregados",
+      "toastFailedItems": "El negocio se guardó, pero fallaron sus productos"
     },
     "settings": {
       "managePipeline": "Gestionar pipeline",

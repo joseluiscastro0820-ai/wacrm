@@ -664,7 +664,14 @@
       "toastMarkedLost": "실패로 표시했습니다",
       "toastReopened": "딜이 재개되었습니다",
       "toastFailedDelete": "딜을 삭제하지 못했습니다",
-      "toastDeleted": "딜이 삭제되었습니다"
+      "toastDeleted": "딜이 삭제되었습니다",
+      "itemsLabel": "제품",
+      "itemsEmpty": "추가된 제품이 없습니다",
+      "itemsSelectProduct": "제품을 선택하세요",
+      "itemsRemove": "제거",
+      "itemsOverStock": "재고 {count}개만 남음",
+      "itemsValueFromItems": "추가된 제품을 기준으로 계산됨",
+      "toastFailedItems": "딜은 저장되었지만 제품을 저장하지 못했습니다"
     },
     "settings": {
       "managePipeline": "파이프라인 관리",

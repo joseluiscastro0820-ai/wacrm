@@ -4,13 +4,15 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { CURRENCIES } from "@/lib/currency";
+import { CURRENCIES, formatCurrency } from "@/lib/currency";
 import type {
   Contact,
   Conversation,
   Deal,
+  DealItem,
   DealStatus,
   PipelineStage,
+  Product,
   Profile,
 } from "@/types";
 import {
@@ -30,9 +32,26 @@ import {
   MessageSquare,
   DollarSign,
   Loader2,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+
+/**
+ * A deal_items row being edited in this form. `key` is a client-only
+ * stable id for the React list (new rows have no `id` yet); `id` is
+ * set only for a row that already exists in the DB, so save() knows
+ * whether it's inserting fresh or just re-sending the full set.
+ */
+interface WorkingItem {
+  key: string;
+  id?: string;
+  product_id: string;
+  product_name: string;
+  unit_price: number;
+  currency: string;
+  quantity: number;
+}
 
 interface DealFormProps {
   open: boolean;
@@ -68,6 +87,10 @@ export function DealForm({
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [items, setItems] = useState<WorkingItem[]>([]);
+  const [newItemProductId, setNewItemProductId] = useState("");
+  const [newItemQuantity, setNewItemQuantity] = useState("1");
   const [linkedConversation, setLinkedConversation] =
     useState<Conversation | null>(null);
 
@@ -83,6 +106,8 @@ export function DealForm({
   useEffect(() => {
     if (!open) return;
     setConfirmDelete(false);
+    setNewItemProductId("");
+    setNewItemQuantity("1");
     if (deal) {
       setTitle(deal.title);
       setValue(String(deal.value ?? ""));
@@ -94,6 +119,7 @@ export function DealForm({
       setAssignedTo(deal.assigned_to ?? "");
       setExpectedCloseDate(deal.expected_close_date ?? "");
       setNotes(deal.notes ?? "");
+      setItems([]);
     } else {
       setTitle("");
       setValue("");
@@ -103,6 +129,7 @@ export function DealForm({
       setAssignedTo("");
       setExpectedCloseDate("");
       setNotes("");
+      setItems([]);
     }
   }, [open, deal, defaultStageId, stages, defaultCurrency]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -112,18 +139,88 @@ export function DealForm({
     if (!open) return;
     let cancelled = false;
     (async () => {
-      const [c, p] = await Promise.all([
+      const [c, p, pr] = await Promise.all([
         supabase.from("contacts").select("*").order("name"),
         supabase.from("profiles").select("*").order("full_name"),
+        supabase
+          .from("products")
+          .select("*")
+          .eq("is_active", true)
+          .order("name"),
       ]);
       if (cancelled) return;
       setContacts((c.data ?? []) as Contact[]);
       setProfiles((p.data ?? []) as Profile[]);
+      setProducts((pr.data ?? []) as Product[]);
     })();
     return () => {
       cancelled = true;
     };
   }, [open, supabase]);
+
+  // Existing items for the deal being edited — loaded separately since
+  // it depends on deal.id, not just the sheet being open (a brand-new
+  // deal has no items yet; `items` was already cleared above).
+  useEffect(() => {
+    if (!open || !deal) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("deal_items")
+        .select("*")
+        .eq("deal_id", deal.id)
+        .order("created_at");
+      if (cancelled) return;
+      const rows = (data ?? []) as DealItem[];
+      setItems(
+        rows.map((row) => ({
+          key: row.id,
+          id: row.id,
+          product_id: row.product_id ?? "",
+          product_name: row.product_name,
+          unit_price: row.unit_price,
+          currency: row.currency,
+          quantity: row.quantity,
+        })),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, deal, supabase]);
+
+  // Items drive the deal's value once any exist — manual entry stays
+  // available only for a freeform deal with no product lines, so a
+  // pedido's total always matches what's actually in the catálogo.
+  useEffect(() => {
+    if (items.length === 0) return;
+    const total = items.reduce((sum, it) => sum + it.unit_price * it.quantity, 0);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setValue(String(total));
+  }, [items]);
+
+  function addItem() {
+    const product = products.find((p) => p.id === newItemProductId);
+    if (!product) return;
+    const quantity = Math.max(1, Math.trunc(Number(newItemQuantity) || 1));
+    setItems((prev) => [
+      ...prev,
+      {
+        key: crypto.randomUUID(),
+        product_id: product.id,
+        product_name: product.name,
+        unit_price: product.price,
+        currency: product.currency,
+        quantity,
+      },
+    ]);
+    setNewItemProductId("");
+    setNewItemQuantity("1");
+  }
+
+  function removeItem(key: string) {
+    setItems((prev) => prev.filter((it) => it.key !== key));
+  }
 
   // Fetch linked conversation for the selected contact (newest open one).
   // Clearing on no-selection is sync with prop state; the populated
@@ -170,6 +267,8 @@ export function DealForm({
       expected_close_date: expectedCloseDate || null,
     };
 
+    let dealId = deal?.id;
+
     if (deal) {
       const { error } = await supabase
         .from("deals")
@@ -195,13 +294,38 @@ export function DealForm({
         setSaving(false);
         return;
       }
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from("deals")
-        .insert({ ...payload, user_id: user.id, account_id: accountId, status: "open" });
-      if (error) {
+        .insert({ ...payload, user_id: user.id, account_id: accountId, status: "open" })
+        .select("id")
+        .single();
+      if (error || !inserted) {
         toast.error(t("toastFailedCreate"));
         setSaving(false);
         return;
+      }
+      dealId = inserted.id;
+    }
+
+    // Replace the full item set rather than diffing — simpler and
+    // correct either way: the stock triggers net out to zero for any
+    // item whose quantity/product didn't actually change.
+    if (dealId) {
+      await supabase.from("deal_items").delete().eq("deal_id", dealId);
+      if (items.length > 0) {
+        const { error: itemsError } = await supabase.from("deal_items").insert(
+          items.map((it) => ({
+            deal_id: dealId,
+            product_id: it.product_id || null,
+            product_name: it.product_name,
+            unit_price: it.unit_price,
+            currency: it.currency,
+            quantity: it.quantity,
+          })),
+        );
+        if (itemsError) {
+          toast.error(t("toastFailedItems"));
+        }
       }
     }
 
@@ -295,6 +419,93 @@ export function DealForm({
               )}
             </div>
 
+            <div className="grid gap-2 rounded-lg border border-border bg-muted/50 p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-muted-foreground">{t("itemsLabel")}</Label>
+                {items.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {formatCurrency(
+                      items.reduce((sum, it) => sum + it.unit_price * it.quantity, 0),
+                      currency,
+                    )}
+                  </span>
+                )}
+              </div>
+
+              {items.length === 0 ? (
+                <p className="text-xs text-muted-foreground">{t("itemsEmpty")}</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {items.map((it) => {
+                    const product = products.find((p) => p.id === it.product_id);
+                    const overStock =
+                      product?.track_stock && it.quantity > product.stock_quantity;
+                    return (
+                      <li
+                        key={it.key}
+                        className="flex items-center gap-2 rounded-md bg-background/60 px-2 py-1.5 text-sm"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-foreground">
+                            {it.quantity}× {it.product_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatCurrency(it.unit_price * it.quantity, it.currency)}
+                            {overStock && (
+                              <span className="ml-1.5 text-amber-400">
+                                {t("itemsOverStock", { count: product!.stock_quantity })}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(it.key)}
+                          aria-label={t("itemsRemove")}
+                          className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-red-400"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              <div className="flex gap-2">
+                <select
+                  value={newItemProductId}
+                  onChange={(e) => setNewItemProductId(e.target.value)}
+                  className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-muted px-2.5 text-sm text-foreground outline-none focus:border-primary"
+                >
+                  <option value="">{t("itemsSelectProduct")}</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — {formatCurrency(p.price, p.currency)}
+                    </option>
+                  ))}
+                </select>
+                <Input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={newItemQuantity}
+                  onChange={(e) => setNewItemQuantity(e.target.value)}
+                  className="w-16 border-border bg-muted text-foreground"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  disabled={!newItemProductId}
+                  onClick={addItem}
+                  className="shrink-0 border-border bg-transparent text-foreground hover:bg-muted"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-[1fr_110px] gap-3">
               <div className="grid gap-2">
                 <Label className="text-muted-foreground">{t("value")}</Label>
@@ -305,9 +516,14 @@ export function DealForm({
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     placeholder="0"
-                    className="border-border bg-muted pl-7 text-foreground"
+                    readOnly={items.length > 0}
+                    title={items.length > 0 ? t("itemsValueFromItems") : undefined}
+                    className="border-border bg-muted pl-7 text-foreground disabled:opacity-100"
                   />
                 </div>
+                {items.length > 0 && (
+                  <p className="text-xs text-muted-foreground">{t("itemsValueFromItems")}</p>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label className="text-muted-foreground">{t("currency")}</Label>

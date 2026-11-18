@@ -418,6 +418,27 @@ export interface Deal {
   assignee?: Profile;
 }
 
+/**
+ * One product line on a Deal ("pedido"). `product_name`/`unit_price`/
+ * `currency` are a snapshot taken when the item was added — they stay
+ * correct even if the product is later renamed, repriced, or deleted
+ * (`product_id` goes null on delete, ON DELETE SET NULL).
+ *
+ * Stock only actually moves when the parent Deal's status changes
+ * to/from 'won' (DB triggers from migration add_deal_items_and_stock_sync) —
+ * adding or editing items on an open deal never touches `products.stock_quantity`.
+ */
+export interface DealItem {
+  id: string;
+  deal_id: string;
+  product_id: string | null;
+  product_name: string;
+  unit_price: number;
+  currency: string;
+  quantity: number;
+  created_at: string;
+}
+
 export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';
 export type RecipientStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'replied' | 'failed';
 

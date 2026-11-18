@@ -678,7 +678,14 @@
       "toastMarkedLost": "Marked as lost",
       "toastReopened": "Deal reopened",
       "toastFailedDelete": "Failed to delete deal",
-      "toastDeleted": "Deal deleted"
+      "toastDeleted": "Deal deleted",
+      "itemsLabel": "Products",
+      "itemsEmpty": "No products added",
+      "itemsSelectProduct": "Select a product",
+      "itemsRemove": "Remove",
+      "itemsOverStock": "only {count} in stock",
+      "itemsValueFromItems": "Calculated from the added products",
+      "toastFailedItems": "Saved the deal, but failed to save its products"
     },
     "settings": {
       "managePipeline": "Manage Pipeline",
