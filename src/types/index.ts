@@ -352,6 +352,13 @@ export interface WhatsAppConfig {
    * inbound attachments expire. Migration 039.
    */
   mirror_inbound_media?: boolean;
+  /**
+   * Admin's own WhatsApp number for operational alerts (AI handoff,
+   * pending returns) — distinct from phone_number_id, the
+   * business-facing number customers message. NULL/unset = alerts
+   * off. Migration 042.
+   */
+  alert_phone?: string | null;
 }
 
 // Raw Meta status enum. We persist this verbatim from Meta (sync + webhook)

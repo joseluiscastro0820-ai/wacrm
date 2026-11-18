@@ -15,6 +15,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { isValidE164 } from '@/lib/whatsapp/phone-utils';
 import { useAuth } from '@/hooks/use-auth';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -87,6 +88,14 @@ export function WhatsAppConfig() {
   const [mirrorMedia, setMirrorMedia] = useState(true);
   const [savingMirror, setSavingMirror] = useState(false);
 
+  // Operational alerts (AI handoff, pending returns) sent to the
+  // admin's own number via the same Meta credentials as the rest of
+  // this row — see migration 042. Kept as its own explicit-save text
+  // field (not auto-save like mirrorMedia's switch) since a phone
+  // number needs to be typed out in full before it's worth validating.
+  const [alertPhone, setAlertPhone] = useState('');
+  const [savingAlertPhone, setSavingAlertPhone] = useState(false);
+
   // True once /register has succeeded on Meta's side (timestamp set
   // in the row). When false, the saved config is metadata-only and
   // Meta will silently drop every inbound event — that's the
@@ -141,6 +150,7 @@ export function WhatsAppConfig() {
         // Undefined on a row read before migration 039 — treat that as
         // on, matching the webhook's own default.
         setMirrorMedia(data.mirror_inbound_media !== false);
+        setAlertPhone(data.alert_phone || '');
       } else {
         setConfig(null);
         setPhoneNumberId('');
@@ -150,6 +160,7 @@ export function WhatsAppConfig() {
         setPin('');
         setTokenEdited(false);
         setMirrorMedia(true);
+        setAlertPhone('');
       }
       // Clear any stale probe result when reloading the row.
       setRegistrationProbe(null);
@@ -223,6 +234,30 @@ export function WhatsAppConfig() {
       toast.error(t('mirrorInboundSaveFailed'));
     } finally {
       setSavingMirror(false);
+    }
+  }
+
+  async function handleSaveAlertPhone() {
+    if (!config || !accountId || savingAlertPhone) return;
+    const trimmed = alertPhone.trim();
+    if (trimmed && !isValidE164(trimmed)) {
+      toast.error(t('alertPhoneInvalid'));
+      return;
+    }
+    setSavingAlertPhone(true);
+    try {
+      const { error } = await supabase
+        .from('whatsapp_config')
+        .update({ alert_phone: trimmed || null })
+        .eq('account_id', accountId);
+      if (error) throw new Error(error.message);
+      setConfig({ ...config, alert_phone: trimmed || null });
+      toast.success(trimmed ? t('alertPhoneSaved') : t('alertPhoneCleared'));
+    } catch (error) {
+      console.error('Failed to update alert phone:', error);
+      toast.error(t('alertPhoneSaveFailed'));
+    } finally {
+      setSavingAlertPhone(false);
     }
   }
 
@@ -760,6 +795,47 @@ export function WhatsAppConfig() {
                   aria-label={t('mirrorInbound')}
                 />
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Operational alerts — see migration 042. Only meaningful once
+            a number is connected (needs the same Meta credentials to
+            send). Requires an approved WhatsApp template the first time
+            Meta hasn't seen this number message the business recently
+            — see Settings > Templates. */}
+        {config && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-foreground">{t('alertsTitle')}</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                {t('alertsDesc')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Label className="text-muted-foreground">{t('alertPhone')}</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder={t('alertPhonePlaceholder')}
+                  value={alertPhone}
+                  onChange={(e) => setAlertPhone(e.target.value)}
+                  disabled={!canEditSettings}
+                  className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+                />
+                <Button
+                  variant="outline"
+                  onClick={handleSaveAlertPhone}
+                  disabled={savingAlertPhone || !canEditSettings}
+                  className="shrink-0 border-border text-foreground hover:bg-muted"
+                >
+                  {savingAlertPhone ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    t('alertPhoneSave')
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">{t('alertPhoneHint')}</p>
             </CardContent>
           </Card>
         )}

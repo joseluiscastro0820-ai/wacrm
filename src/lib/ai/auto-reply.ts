@@ -5,6 +5,7 @@ import { retrieveKnowledge } from './knowledge'
 import { generateReply } from './generate'
 import { buildSystemPrompt } from './defaults'
 import { buildHandoffSummary } from './handoff'
+import { sendAdminAlert } from '@/lib/whatsapp/send-admin-alert'
 import { logAiUsage } from './usage'
 import { latestUserMessage } from './query'
 import { buildAiTools, executeAiTool } from './tools'
@@ -258,6 +259,19 @@ export async function dispatchInboundToAiReply(
         update.assigned_agent_id = config.handoffAgentId
       }
       await db.from('conversations').update(update).eq('id', conversationId)
+      // Best-effort WhatsApp ping to the admin's own number (migration
+      // 042) — the in-app notification above only reaches someone with
+      // the app open; this reaches them wherever they are. Never
+      // awaited into the critical path mattering: sendAdminAlert
+      // swallows its own errors (e.g. alert_phone not configured, or
+      // the template not approved yet), so it can't turn this into a
+      // failed handoff.
+      void sendAdminAlert(
+        accountId,
+        `Un chat pasó a atención humana: la IA no pudo responder.${
+          handoffNote ? ` (${handoffNote})` : ''
+        }`,
+      )
       return
     }
 

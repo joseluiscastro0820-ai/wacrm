@@ -12,6 +12,7 @@ import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
 import { sendMessageToConversation } from '@/lib/whatsapp/send-message'
+import { sendAdminAlert } from '@/lib/whatsapp/send-admin-alert'
 import {
   handleTemplateWebhookChange,
   isTemplateWebhookField,
@@ -638,6 +639,15 @@ async function maybeHandleReturnRequest(
       contentText: `Recibimos tu solicitud de devolución de "${item.product_name}". Un agente la revisará pronto.`,
     }).catch((err) =>
       console.error('[returns] confirmation message send failed:', err)
+    )
+
+    // Unlike a conversation handoff, a pending return creates no
+    // in-app notification at all today (see migration 042's ops
+    // notes) — this WhatsApp ping to the admin is the only alert.
+    // Best-effort / never throws, see sendAdminAlert.
+    void sendAdminAlert(
+      accountId,
+      `Nueva devolución pendiente: ${item.quantity}x "${item.product_name}".`,
     )
   } catch (err) {
     console.error('[returns] failed to process return request:', err)
