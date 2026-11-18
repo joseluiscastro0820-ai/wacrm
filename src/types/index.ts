@@ -182,6 +182,38 @@ export interface Product {
   updated_at: string;
 }
 
+/**
+ * A per-city/zone delivery-fee override — migration 043. Lets a
+ * pedido's delivery fee be looked up by destination instead of always
+ * falling back to accounts.default_delivery_fee, and lets the AI quote
+ * it directly instead of handing off every "¿cuánto cuesta el domicilio
+ * a X?" question.
+ */
+export interface DeliveryZone {
+  id: string;
+  account_id: string;
+  label: string;
+  fee: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * A quantity-threshold discount rule — migration 043. Account-wide
+ * (not per-product): "min_quantity or more units get discount_percent
+ * off". The deal form applies the best-matching rule automatically
+ * when a line item's quantity qualifies; the AI gets the same ladder
+ * as grounding so it can answer "por mayoreo" questions itself.
+ */
+export interface VolumeDiscount {
+  id: string;
+  account_id: string;
+  min_quantity: number;
+  discount_percent: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export type ReturnStatus = 'pending' | 'approved' | 'rejected';
 
 /**

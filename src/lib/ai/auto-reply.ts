@@ -1,7 +1,7 @@
 import { supabaseAdmin } from './admin-client'
 import { loadAiConfig } from './config'
 import { buildConversationContext } from './context'
-import { retrieveKnowledge } from './knowledge'
+import { retrieveKnowledge, buildPricingKnowledge } from './knowledge'
 import { generateReply } from './generate'
 import { buildSystemPrompt } from './defaults'
 import { buildHandoffSummary } from './handoff'
@@ -147,13 +147,14 @@ export async function dispatchInboundToAiReply(
       return
     }
 
-    // Ground the reply in the account's knowledge base (best-effort).
-    const knowledge = await retrieveKnowledge(
-      db,
-      accountId,
-      config,
-      latestUserMessage(messages),
-    )
+    // Ground the reply in the account's knowledge base (best-effort),
+    // plus the always-on pricing reference (delivery zones + volume
+    // discounts, migration 043) so the two most common "needs a human"
+    // questions can now be answered directly — see buildPricingKnowledge.
+    const knowledge = [
+      ...(await buildPricingKnowledge(db, accountId)),
+      ...(await retrieveKnowledge(db, accountId, config, latestUserMessage(messages))),
+    ]
 
     // Tool catalog for this account (tags + contact fields it actually
     // has). Best-effort: a lookup failure here just means no tools

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Coins, Loader2, Truck } from "lucide-react";
+import { Coins, Loader2, MapPin, Percent, Plus, Trash2, Truck } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { CURRENCIES } from "@/lib/currency";
+import type { DeliveryZone, VolumeDiscount } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -103,6 +104,139 @@ export function DealsSettings() {
     await refreshProfile();
     setSavingDeliveryFee(false);
     toast.success(t("saveDeliveryFeeSuccess"));
+  }
+
+  // Delivery zones (migration 043) — per-city overrides on top of the
+  // default fee above. Loaded straight from Supabase (RLS already
+  // restricts writes to admin+, matching canEditSettings below), not
+  // through useAuth: unlike currency/delivery-fee defaults, nothing
+  // outside Settings + the deal form needs this list, so it doesn't
+  // belong in the global profile fetch.
+  const [zones, setZones] = useState<DeliveryZone[]>([]);
+  const [zonesLoading, setZonesLoading] = useState(true);
+  const [newZoneLabel, setNewZoneLabel] = useState("");
+  const [newZoneFee, setNewZoneFee] = useState("");
+  const [savingZone, setSavingZone] = useState(false);
+  const [deletingZoneId, setDeletingZoneId] = useState<string | null>(null);
+
+  // Volume discounts (migration 043) — quantity threshold -> % off.
+  const [discounts, setDiscounts] = useState<VolumeDiscount[]>([]);
+  const [discountsLoading, setDiscountsLoading] = useState(true);
+  const [newDiscountQty, setNewDiscountQty] = useState("");
+  const [newDiscountPercent, setNewDiscountPercent] = useState("");
+  const [savingDiscount, setSavingDiscount] = useState(false);
+  const [deletingDiscountId, setDeletingDiscountId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!accountId) return;
+    let cancelled = false;
+    (async () => {
+      const [z, d] = await Promise.all([
+        supabase
+          .from("delivery_zones")
+          .select("*")
+          .eq("account_id", accountId)
+          .order("label"),
+        supabase
+          .from("volume_discounts")
+          .select("*")
+          .eq("account_id", accountId)
+          .order("min_quantity"),
+      ]);
+      if (cancelled) return;
+      setZones((z.data ?? []) as DeliveryZone[]);
+      setZonesLoading(false);
+      setDiscounts((d.data ?? []) as VolumeDiscount[]);
+      setDiscountsLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId, supabase]);
+
+  async function handleAddZone() {
+    if (!accountId || !newZoneLabel.trim() || savingZone) return;
+    setSavingZone(true);
+    const { data, error } = await supabase
+      .from("delivery_zones")
+      .insert({
+        account_id: accountId,
+        label: newZoneLabel.trim(),
+        fee: parseFloat(newZoneFee) || 0,
+      })
+      .select()
+      .single();
+    setSavingZone(false);
+    if (error) {
+      // Most likely cause: a zone with this exact name already exists
+      // (UNIQUE(account_id, label)) — surfaced generically since the
+      // DB error text isn't localized.
+      toast.error(t("zoneSaveFailed"));
+      return;
+    }
+    setZones((prev) =>
+      [...prev, data as DeliveryZone].sort((a, b) => a.label.localeCompare(b.label)),
+    );
+    setNewZoneLabel("");
+    setNewZoneFee("");
+  }
+
+  async function handleDeleteZone(id: string) {
+    setDeletingZoneId(id);
+    const { error } = await supabase.from("delivery_zones").delete().eq("id", id);
+    setDeletingZoneId(null);
+    if (error) {
+      toast.error(t("zoneDeleteFailed"));
+      return;
+    }
+    setZones((prev) => prev.filter((z) => z.id !== id));
+  }
+
+  async function handleAddDiscount() {
+    if (!accountId || savingDiscount) return;
+    const minQuantity = Math.trunc(Number(newDiscountQty));
+    const discountPercent = Number(newDiscountPercent);
+    if (!Number.isFinite(minQuantity) || minQuantity < 2) {
+      toast.error(t("discountQtyInvalid"));
+      return;
+    }
+    if (!Number.isFinite(discountPercent) || discountPercent <= 0 || discountPercent > 100) {
+      toast.error(t("discountPercentInvalid"));
+      return;
+    }
+    setSavingDiscount(true);
+    const { data, error } = await supabase
+      .from("volume_discounts")
+      .insert({
+        account_id: accountId,
+        min_quantity: minQuantity,
+        discount_percent: discountPercent,
+      })
+      .select()
+      .single();
+    setSavingDiscount(false);
+    if (error) {
+      // Most likely cause: a rule for this exact threshold already
+      // exists (UNIQUE(account_id, min_quantity)).
+      toast.error(t("discountSaveFailed"));
+      return;
+    }
+    setDiscounts((prev) =>
+      [...prev, data as VolumeDiscount].sort((a, b) => a.min_quantity - b.min_quantity),
+    );
+    setNewDiscountQty("");
+    setNewDiscountPercent("");
+  }
+
+  async function handleDeleteDiscount(id: string) {
+    setDeletingDiscountId(id);
+    const { error } = await supabase.from("volume_discounts").delete().eq("id", id);
+    setDeletingDiscountId(null);
+    if (error) {
+      toast.error(t("discountDeleteFailed"));
+      return;
+    }
+    setDiscounts((prev) => prev.filter((d) => d.id !== id));
   }
 
   return (
@@ -205,6 +339,177 @@ export function DealsSettings() {
                 t("save")
               )}
             </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <MapPin className="size-4 text-primary" />
+            {t("zonesTitle")}
+          </CardTitle>
+          <CardDescription className="text-muted-foreground">
+            {t("zonesDesc")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {zonesLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : zones.length === 0 ? (
+            <p className="text-xs text-muted-foreground">{t("zonesEmpty")}</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {zones.map((z) => (
+                <li
+                  key={z.id}
+                  className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-3 py-2 text-sm"
+                >
+                  <span className="text-foreground">{z.label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">{z.fee}</span>
+                    {canEditSettings && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteZone(z.id)}
+                        disabled={deletingZoneId === z.id}
+                        aria-label={t("zonesRemove")}
+                        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-red-400"
+                      >
+                        {deletingZoneId === z.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {canEditSettings && (
+            <div className="flex gap-2">
+              <Input
+                value={newZoneLabel}
+                onChange={(e) => setNewZoneLabel(e.target.value)}
+                placeholder={t("zonesLabelPlaceholder")}
+                className="min-w-0 flex-1 border-border bg-muted text-foreground"
+              />
+              <Input
+                type="number"
+                value={newZoneFee}
+                onChange={(e) => setNewZoneFee(e.target.value)}
+                placeholder={t("zonesFeePlaceholder")}
+                className="w-28 border-border bg-muted text-foreground"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                disabled={savingZone || !newZoneLabel.trim()}
+                onClick={handleAddZone}
+                className="shrink-0 border-border bg-transparent text-foreground hover:bg-muted"
+              >
+                {savingZone ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-foreground">
+            <Percent className="size-4 text-primary" />
+            {t("discountsTitle")}
+          </CardTitle>
+          <CardDescription className="text-muted-foreground">
+            {t("discountsDesc")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {discountsLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : discounts.length === 0 ? (
+            <p className="text-xs text-muted-foreground">{t("discountsEmpty")}</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {discounts.map((d) => (
+                <li
+                  key={d.id}
+                  className="flex items-center justify-between gap-2 rounded-md bg-muted/50 px-3 py-2 text-sm"
+                >
+                  <span className="text-foreground">
+                    {t("discountsRuleLabel", { qty: d.min_quantity })}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">-{d.discount_percent}%</span>
+                    {canEditSettings && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDiscount(d.id)}
+                        disabled={deletingDiscountId === d.id}
+                        aria-label={t("discountsRemove")}
+                        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-red-400"
+                      >
+                        {deletingDiscountId === d.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {canEditSettings && (
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                min="2"
+                step="1"
+                value={newDiscountQty}
+                onChange={(e) => setNewDiscountQty(e.target.value)}
+                placeholder={t("discountsQtyPlaceholder")}
+                className="min-w-0 flex-1 border-border bg-muted text-foreground"
+              />
+              <Input
+                type="number"
+                min="1"
+                max="100"
+                value={newDiscountPercent}
+                onChange={(e) => setNewDiscountPercent(e.target.value)}
+                placeholder={t("discountsPercentPlaceholder")}
+                className="w-28 border-border bg-muted text-foreground"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                disabled={savingDiscount || !newDiscountQty || !newDiscountPercent}
+                onClick={handleAddDiscount}
+                className="shrink-0 border-border bg-transparent text-foreground hover:bg-muted"
+              >
+                {savingDiscount ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -6,6 +6,7 @@ const h = vi.hoisted(() => ({
   loadAiConfig: vi.fn(),
   buildConversationContext: vi.fn(),
   retrieveKnowledge: vi.fn(),
+  buildPricingKnowledge: vi.fn(),
   generateReply: vi.fn(),
   evaluateReply: vi.fn(),
   engineSendText: vi.fn(),
@@ -20,7 +21,10 @@ const h = vi.hoisted(() => ({
 
 vi.mock('./config', () => ({ loadAiConfig: h.loadAiConfig }))
 vi.mock('./context', () => ({ buildConversationContext: h.buildConversationContext }))
-vi.mock('./knowledge', () => ({ retrieveKnowledge: h.retrieveKnowledge }))
+vi.mock('./knowledge', () => ({
+  retrieveKnowledge: h.retrieveKnowledge,
+  buildPricingKnowledge: h.buildPricingKnowledge,
+}))
 vi.mock('./generate', () => ({ generateReply: h.generateReply }))
 vi.mock('./evaluate', () => ({ evaluateReply: h.evaluateReply }))
 vi.mock('@/lib/flows/meta-send', () => ({ engineSendText: h.engineSendText }))
@@ -97,6 +101,7 @@ beforeEach(() => {
   h.loadAiConfig.mockResolvedValue(aiConfig())
   h.buildConversationContext.mockResolvedValue([{ role: 'user', content: 'hi' }])
   h.retrieveKnowledge.mockResolvedValue([])
+  h.buildPricingKnowledge.mockResolvedValue([])
   h.generateReply.mockResolvedValue({ text: 'Hello!', handoff: false })
   h.evaluateReply.mockResolvedValue({ result: { ok: true }, usage: null })
   h.engineSendText.mockResolvedValue({ whatsapp_message_id: 'm1' })

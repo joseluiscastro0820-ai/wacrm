@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireRole, toErrorResponse } from '@/lib/auth/account'
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit'
 import { loadAiConfig } from '@/lib/ai/config'
-import { retrieveKnowledge } from '@/lib/ai/knowledge'
+import { retrieveKnowledge, buildPricingKnowledge } from '@/lib/ai/knowledge'
 import { generateReply } from '@/lib/ai/generate'
 import { buildSystemPrompt } from '@/lib/ai/defaults'
 import { latestUserMessage } from '@/lib/ai/query'
@@ -72,12 +72,12 @@ export async function POST(request: Request) {
       )
     }
 
-    const knowledge = await retrieveKnowledge(
-      supabase,
-      accountId,
-      config,
-      latestUserMessage(messages),
-    )
+    // Same pricing-reference grounding as auto-reply.ts (migration 043)
+    // — the Playground should preview exactly what the live bot sees.
+    const knowledge = [
+      ...(await buildPricingKnowledge(supabase, accountId)),
+      ...(await retrieveKnowledge(supabase, accountId, config, latestUserMessage(messages))),
+    ]
     const systemPrompt = buildSystemPrompt({
       userPrompt: config.systemPrompt,
       mode: 'auto_reply',

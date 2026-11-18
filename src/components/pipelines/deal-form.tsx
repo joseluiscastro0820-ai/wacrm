@@ -11,9 +11,11 @@ import type {
   Deal,
   DealItem,
   DealStatus,
+  DeliveryZone,
   PipelineStage,
   Product,
   Profile,
+  VolumeDiscount,
 } from "@/types";
 import {
   Sheet,
@@ -53,6 +55,13 @@ interface WorkingItem {
   unit_price: number;
   currency: string;
   quantity: number;
+  /**
+   * Set when addItem() applied a volume_discounts rule (migration 043)
+   * to this line's unit_price — display only, so the agent can see why
+   * the price is lower than the product's list price. The discount is
+   * already baked into unit_price; this is never sent to the DB.
+   */
+  discountPercent?: number;
 }
 
 interface DealFormProps {
@@ -91,6 +100,8 @@ export function DealForm({
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [zones, setZones] = useState<DeliveryZone[]>([]);
+  const [volumeDiscounts, setVolumeDiscounts] = useState<VolumeDiscount[]>([]);
   const [items, setItems] = useState<WorkingItem[]>([]);
   const [newItemProductId, setNewItemProductId] = useState("");
   const [newItemQuantity, setNewItemQuantity] = useState("1");
@@ -153,7 +164,7 @@ export function DealForm({
     if (!open) return;
     let cancelled = false;
     (async () => {
-      const [c, p, pr] = await Promise.all([
+      const [c, p, pr, dz, vd] = await Promise.all([
         supabase.from("contacts").select("*").order("name"),
         supabase.from("profiles").select("*").order("full_name"),
         supabase
@@ -161,11 +172,15 @@ export function DealForm({
           .select("*")
           .eq("is_active", true)
           .order("name"),
+        supabase.from("delivery_zones").select("*").order("label"),
+        supabase.from("volume_discounts").select("*").order("min_quantity"),
       ]);
       if (cancelled) return;
       setContacts((c.data ?? []) as Contact[]);
       setProfiles((p.data ?? []) as Profile[]);
       setProducts((pr.data ?? []) as Product[]);
+      setZones((dz.data ?? []) as DeliveryZone[]);
+      setVolumeDiscounts((vd.data ?? []) as VolumeDiscount[]);
     })();
     return () => {
       cancelled = true;
@@ -217,15 +232,29 @@ export function DealForm({
     const product = products.find((p) => p.id === newItemProductId);
     if (!product) return;
     const quantity = Math.max(1, Math.trunc(Number(newItemQuantity) || 1));
+
+    // Best-matching volume_discounts rule (migration 043) — the
+    // highest min_quantity this line's quantity clears. volumeDiscounts
+    // is loaded sorted by min_quantity ascending, so the last match
+    // found by iterating is the best one.
+    const rule = volumeDiscounts.reduce<VolumeDiscount | null>(
+      (best, d) => (quantity >= d.min_quantity ? d : best),
+      null,
+    );
+    const unitPrice = rule
+      ? Math.round(product.price * (1 - rule.discount_percent / 100) * 100) / 100
+      : product.price;
+
     setItems((prev) => [
       ...prev,
       {
         key: crypto.randomUUID(),
         product_id: product.id,
         product_name: product.name,
-        unit_price: product.price,
+        unit_price: unitPrice,
         currency: product.currency,
         quantity,
+        discountPercent: rule?.discount_percent,
       },
     ]);
     setNewItemProductId("");
@@ -470,6 +499,11 @@ export function DealForm({
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {formatCurrency(it.unit_price * it.quantity, it.currency)}
+                            {it.discountPercent != null && (
+                              <span className="ml-1.5 text-emerald-400">
+                                {t("itemsVolumeDiscount", { percent: it.discountPercent })}
+                              </span>
+                            )}
                             {overStock && (
                               <span className="ml-1.5 text-amber-400">
                                 {t("itemsOverStock", { count: product!.stock_quantity })}
@@ -572,6 +606,20 @@ export function DealForm({
                   className="border-border bg-muted pl-7 text-foreground"
                 />
               </div>
+              {zones.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {zones.map((z) => (
+                    <button
+                      key={z.id}
+                      type="button"
+                      onClick={() => setDeliveryFee(String(z.fee))}
+                      className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs text-muted-foreground hover:border-primary hover:text-primary"
+                    >
+                      {z.label} · {z.fee}
+                    </button>
+                  ))}
+                </div>
+              )}
               {deal?.dispatch_terms_sent_at && (
                 <p className="text-xs text-muted-foreground">
                   {t("dispatchTermsSent")}

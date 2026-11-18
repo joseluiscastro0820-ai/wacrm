@@ -81,6 +81,66 @@ export async function ingestDocument(
  * any failure (no KB, embedding error, RPC error) degrades to fewer or
  * zero results and never throws into the draft / auto-reply path.
  */
+
+/**
+ * Grounding text for the two pricing questions that used to always
+ * require a human (migration 043 — "Fase 0" of reducing how often
+ * Jose gets paged): delivery fee to a specific city/zone, and
+ * quantity/wholesale discounts. Returned as extra `knowledge` entries
+ * so the model can quote them directly via the same
+ * "never invent prices" system-prompt rule that already governs
+ * knowledge-base excerpts — this is just another trusted source, not
+ * a tool call, so it carries zero write risk.
+ *
+ * Deliberately separate from retrieveKnowledge(): that function's
+ * early-out ("no ai_knowledge_chunks rows → skip everything") has
+ * nothing to do with whether this account has configured zones or
+ * discounts, and a query-relevance check doesn't apply here — this is
+ * small, static reference data the model should always see in full,
+ * not something to search. Best-effort like its sibling: any DB
+ * hiccup degrades to an empty list rather than failing the reply.
+ */
+export async function buildPricingKnowledge(
+  db: SupabaseClient,
+  accountId: string,
+): Promise<string[]> {
+  try {
+    const [{ data: zones }, { data: discounts }] = await Promise.all([
+      db
+        .from('delivery_zones')
+        .select('label, fee')
+        .eq('account_id', accountId)
+        .order('label'),
+      db
+        .from('volume_discounts')
+        .select('min_quantity, discount_percent')
+        .eq('account_id', accountId)
+        .order('min_quantity'),
+    ])
+
+    const entries: string[] = []
+    if (zones && zones.length > 0) {
+      entries.push(
+        'Delivery fees by city/zone — quote the exact number when a customer asks about delivery to one of these places. ' +
+          "If their city isn't listed here, do NOT guess a fee — say you'll check and a human will confirm it:\n" +
+          zones.map((z: { label: string; fee: number }) => `- ${z.label}: ${z.fee}`).join('\n'),
+      )
+    }
+    if (discounts && discounts.length > 0) {
+      entries.push(
+        'Volume/wholesale discounts — mention and apply these exactly when a customer asks about buying in bulk or a quantity that qualifies:\n' +
+          discounts
+            .map((d: { min_quantity: number; discount_percent: number }) => `- ${d.min_quantity}+ units: ${d.discount_percent}% off`)
+            .join('\n'),
+      )
+    }
+    return entries
+  } catch (err) {
+    console.error('[ai] buildPricingKnowledge failed:', err)
+    return []
+  }
+}
+
 export async function retrieveKnowledge(
   db: SupabaseClient,
   accountId: string,
