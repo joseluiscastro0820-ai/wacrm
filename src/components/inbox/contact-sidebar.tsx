@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useCan } from "@/hooks/use-can";
 import { cn } from "@/lib/utils";
-import type { Contact, Deal, ContactNote, Tag } from "@/types";
+import { formatCurrency } from "@/lib/currency";
+import type { Contact, Deal, DealItem, ContactNote, Tag } from "@/types";
 import {
   Phone,
   Mail,
@@ -15,21 +17,27 @@ import {
   DollarSign,
   StickyNote,
   Plus,
+  Undo2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 import { useDateFnsLocale } from "@/i18n/date-locale";
+import { toast } from "sonner";
 
 interface ContactSidebarProps {
   contact: Contact | null;
+  /** Needed only to send the "¿qué deseas devolver?" interactive list. */
+  conversationId?: string | null;
 }
 
-export function ContactSidebar({ contact }: ContactSidebarProps) {
+export function ContactSidebar({ contact, conversationId }: ContactSidebarProps) {
   const tSidebar = useTranslations("Inbox.sidebar");
   const tThread = useTranslations("Inbox.messageThread");
   const dateLocale = useDateFnsLocale();
+  const canSend = useCan("send-messages");
 
   const { accountId } = useAuth();
   const [copied, setCopied] = useState(false);
@@ -38,6 +46,7 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
   const [tags, setTags] = useState<(Tag & { contact_tag_id: string })[]>([]);
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
+  const [requestingReturn, setRequestingReturn] = useState(false);
 
   const fetchContactData = useCallback(async () => {
     if (!contact) return;
@@ -120,6 +129,74 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
     }
     setAddingNote(false);
   }, [contact, newNote, accountId]);
+
+  const handleRequestReturn = useCallback(async () => {
+    if (!contact || !conversationId) return;
+    // Most recent won deal — `deals` is already ordered newest first.
+    const wonDeal = deals.find((d) => d.status === "won");
+    if (!wonDeal) {
+      toast.error(tSidebar("returnNoWonDeal"));
+      return;
+    }
+    setRequestingReturn(true);
+    const supabase = createClient();
+    const { data: dealItems } = await supabase
+      .from("deal_items")
+      .select("*")
+      .eq("deal_id", wonDeal.id)
+      .order("created_at");
+    // Meta caps a list at 10 rows total across all sections.
+    const rows = ((dealItems ?? []) as DealItem[]).slice(0, 10);
+    if (rows.length === 0) {
+      toast.error(tSidebar("returnNoItems"));
+      setRequestingReturn(false);
+      return;
+    }
+
+    const truncate = (s: string, max: number) =>
+      s.length > max ? `${s.slice(0, max - 1)}…` : s;
+
+    try {
+      const res = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          message_type: "interactive",
+          // The customer tapping a row is what actually creates the
+          // pending return request — see the webhook's "return_item:"
+          // handling. This message only offers the choice.
+          interactive_payload: {
+            kind: "list",
+            body: tSidebar("returnListBody"),
+            button_label: tSidebar("returnListButton"),
+            sections: [
+              {
+                rows: rows.map((item) => ({
+                  id: `return_item:${item.id}`,
+                  title: truncate(item.product_name, 24),
+                  description: truncate(
+                    `${item.quantity} x ${formatCurrency(item.unit_price, item.currency)}`,
+                    72,
+                  ),
+                })),
+              },
+            ],
+          },
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data?.error || tSidebar("returnSendFailed"));
+      } else {
+        toast.success(tSidebar("returnSent"));
+      }
+    } catch {
+      toast.error(tSidebar("returnSendFailed"));
+    } finally {
+      setRequestingReturn(false);
+    }
+  }, [contact, conversationId, deals, tSidebar]);
 
   if (!contact) {
     return (
@@ -251,6 +328,22 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
                 ))
               )}
             </div>
+            {canSend && deals.some((d) => d.status === "won") && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRequestReturn}
+                disabled={requestingReturn}
+                className="mt-2 w-full border-border bg-transparent text-xs text-muted-foreground hover:bg-muted"
+              >
+                {requestingReturn ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Undo2 className="h-3 w-3" />
+                )}
+                {tSidebar("requestReturn")}
+              </Button>
+            )}
           </div>
 
           {/* Divider */}

@@ -138,7 +138,8 @@
     "menuProfile": "Perfil",
     "menuSettings": "Configuración",
     "menuSignOut": "Cerrar sesión",
-    "catalog": "Catálogo"
+    "catalog": "Catálogo",
+    "returns": "Devoluciones"
   },
   "Header": {
     "dashboard": "Panel",
@@ -386,7 +387,14 @@
       "deals": "Negocios",
       "noTags": "Sin etiquetas",
       "noDeals": "Sin negocios",
-      "addNotePlaceholder": "Agregar una nota..."
+      "addNotePlaceholder": "Agregar una nota...",
+      "requestReturn": "Solicitar devolución",
+      "returnNoWonDeal": "Este contacto no tiene pedidos ganados todavía",
+      "returnNoItems": "Ese pedido no tiene productos registrados",
+      "returnListBody": "¿Qué producto deseas devolver?",
+      "returnListButton": "Elegir producto",
+      "returnSent": "Lista de devolución enviada",
+      "returnSendFailed": "No se pudo enviar la lista de devolución"
     },
     "aiBanner": {
       "pausedTitle": "El asistente de IA está pausado aquí",
@@ -2057,6 +2065,29 @@
     "toastDeleteFailed": "Error al eliminar el producto",
     "toastCreated": "Producto agregado",
     "toastUpdated": "Producto actualizado",
-    "toastDeleted": "\"{name}\" eliminado"
+    "toastDeleted": "\"{name}\" eliminado",
+    "reservedNote": "{count} reservadas en pedidos agendados"
+  },
+  "Returns": {
+    "title": "Devoluciones",
+    "subtitle": "Solicitudes de devolución iniciadas por tus clientes desde WhatsApp. Aprobar una es lo único que repone el stock.",
+    "emptyTitle": "No hay solicitudes de devolución",
+    "emptyDesc": "Cuando un cliente elija un producto para devolver desde la conversación, aparecerá aquí.",
+    "pendingSection": "Pendientes ({count})",
+    "historySection": "Historial",
+    "colContact": "Contacto",
+    "colProduct": "Producto",
+    "colQuantity": "Cantidad",
+    "colRequested": "Solicitado",
+    "colStatus": "Estado",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "statusApproved": "Aprobada",
+    "statusRejected": "Rechazada",
+    "unknownContact": "Contacto desconocido",
+    "toastLoadFailed": "No se pudieron cargar las devoluciones",
+    "toastReviewFailed": "No se pudo actualizar la solicitud",
+    "toastApproved": "Devolución aprobada, stock actualizado",
+    "toastRejected": "Devolución rechazada"
   }
 }

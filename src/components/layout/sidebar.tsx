@@ -19,6 +19,7 @@ import {
   Radio,
   Settings,
   Shield,
+  Undo2,
   User,
   UserCog,
   Users,
@@ -134,6 +135,12 @@ const navItems: NavItem[] = [
     labelKey: "catalog",
     icon: Package,
     iconBg: "bg-lime-500/15 text-lime-400",
+  },
+  {
+    href: "/returns",
+    labelKey: "returns",
+    icon: Undo2,
+    iconBg: "bg-rose-500/15 text-rose-400",
   },
   {
     href: "/broadcasts",

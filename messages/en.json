@@ -138,7 +138,8 @@
     "menuProfile": "Profile",
     "menuSettings": "Settings",
     "menuSignOut": "Sign out",
-    "catalog": "Catalog"
+    "catalog": "Catalog",
+    "returns": "Returns"
   },
   "Header": {
     "dashboard": "Dashboard",
@@ -386,7 +387,14 @@
       "deals": "Deals",
       "noTags": "No tags",
       "noDeals": "No deals",
-      "addNotePlaceholder": "Add a note..."
+      "addNotePlaceholder": "Add a note...",
+      "requestReturn": "Request return",
+      "returnNoWonDeal": "This contact has no won deals yet",
+      "returnNoItems": "That deal has no products recorded",
+      "returnListBody": "Which product would you like to return?",
+      "returnListButton": "Choose product",
+      "returnSent": "Return list sent",
+      "returnSendFailed": "Failed to send the return list"
     },
     "aiBanner": {
       "pausedTitle": "AI assistant is paused here",
@@ -2057,6 +2065,29 @@
     "toastDeleteFailed": "Failed to delete the product",
     "toastCreated": "Product added",
     "toastUpdated": "Product updated",
-    "toastDeleted": "\"{name}\" deleted"
+    "toastDeleted": "\"{name}\" deleted",
+    "reservedNote": "{count} reserved for scheduled orders"
+  },
+  "Returns": {
+    "title": "Returns",
+    "subtitle": "Return requests your customers started from WhatsApp. Approving one is the only thing that restores stock.",
+    "emptyTitle": "No return requests",
+    "emptyDesc": "When a customer picks a product to return from the conversation, it will show up here.",
+    "pendingSection": "Pending ({count})",
+    "historySection": "History",
+    "colContact": "Contact",
+    "colProduct": "Product",
+    "colQuantity": "Quantity",
+    "colRequested": "Requested",
+    "colStatus": "Status",
+    "approve": "Approve",
+    "reject": "Reject",
+    "statusApproved": "Approved",
+    "statusRejected": "Rejected",
+    "unknownContact": "Unknown contact",
+    "toastLoadFailed": "Failed to load returns",
+    "toastReviewFailed": "Failed to update the request",
+    "toastApproved": "Return approved, stock updated",
+    "toastRejected": "Return rejected"
   }
 }

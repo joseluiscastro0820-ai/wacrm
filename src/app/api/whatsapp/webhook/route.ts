@@ -11,6 +11,7 @@ import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
+import { sendMessageToConversation } from '@/lib/whatsapp/send-message'
 import {
   handleTemplateWebhookChange,
   isTemplateWebhookField,
@@ -572,6 +573,77 @@ async function handleReaction(
   }
 }
 
+/**
+ * Detects a reply to the "¿qué deseas devolver?" interactive list
+ * (ContactSidebar sends it with row ids shaped "return_item:<deal_item
+ * id>") and, when it matches, creates a pending `returns` row and
+ * confirms receipt to the customer. Approving/rejecting that row is an
+ * agent's job from the Devoluciones page — nothing here touches stock.
+ *
+ * No-ops silently for any other interactive reply (button taps, other
+ * lists) — those are somebody else's concern (automations/Flows).
+ */
+async function maybeHandleReturnRequest(
+  accountId: string,
+  conversation: { id: string },
+  contactRecord: { id: string },
+  interactiveReplyId: string | null
+) {
+  const prefix = 'return_item:'
+  if (!interactiveReplyId || !interactiveReplyId.startsWith(prefix)) return
+  const dealItemId = interactiveReplyId.slice(prefix.length)
+
+  try {
+    const { data: item } = await supabaseAdmin()
+      .from('deal_items')
+      .select('id, product_id, product_name, quantity, deal_id, deals!inner(account_id, contact_id)')
+      .eq('id', dealItemId)
+      .maybeSingle()
+
+    // Sanity check: the item's deal must belong to THIS account and
+    // THIS contact — a stale or forwarded row id must never let one
+    // contact trigger a return tied to somebody else's order.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const deal = item?.deals as any
+    if (!item || !deal || deal.account_id !== accountId || deal.contact_id !== contactRecord.id) {
+      await sendMessageToConversation(supabaseAdmin(), accountId, {
+        conversationId: conversation.id,
+        messageType: 'text',
+        contentText:
+          'No pudimos identificar ese producto. Un agente revisará tu solicitud en breve.',
+      }).catch((err) =>
+        console.error('[returns] fallback message send failed:', err)
+      )
+      return
+    }
+
+    await supabaseAdmin().from('returns').insert({
+      account_id: accountId,
+      conversation_id: conversation.id,
+      contact_id: contactRecord.id,
+      deal_id: item.deal_id,
+      deal_item_id: item.id,
+      product_id: item.product_id,
+      product_name: item.product_name,
+      quantity: item.quantity,
+      status: 'pending',
+    })
+
+    // Hardcoded Spanish: this confirms to the CUSTOMER, not the app UI
+    // (which goes through next-intl) — there's no per-account customer
+    // locale anywhere in this codebase to key off of yet.
+    await sendMessageToConversation(supabaseAdmin(), accountId, {
+      conversationId: conversation.id,
+      messageType: 'text',
+      contentText: `Recibimos tu solicitud de devolución de "${item.product_name}". Un agente la revisará pronto.`,
+    }).catch((err) =>
+      console.error('[returns] confirmation message send failed:', err)
+    )
+  } catch (err) {
+    console.error('[returns] failed to process return request:', err)
+  }
+}
+
 async function processMessage(
   message: WhatsAppMessage,
   contact: { profile: { name: string }; wa_id: string },
@@ -738,6 +810,13 @@ async function processMessage(
     )
     return
   }
+
+  // Customer tapped a row on a "¿qué deseas devolver?" list an agent sent
+  // from the Inbox (ContactSidebar's "Solicitar devolución" button) — see
+  // maybeHandleReturnRequest for the "return_item:" id convention. Awaited
+  // (not fire-and-forget) for the same reason as the rest of this
+  // function: we're inside the route's `after()` block.
+  await maybeHandleReturnRequest(accountId, conversation, contactRecord, interactiveReplyId)
 
   // Update conversation. The unread bump is done DB-side (migration 037's
   // bump_conversation_on_inbound) rather than as a read-modify-write of the

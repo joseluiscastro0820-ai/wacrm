@@ -182,6 +182,33 @@ export interface Product {
   updated_at: string;
 }
 
+export type ReturnStatus = 'pending' | 'approved' | 'rejected';
+
+/**
+ * A return request the CUSTOMER started by tapping a row on an
+ * interactive list an agent sent from the Inbox ("¿qué deseas
+ * devolver?"). Nothing about stock happens on its own — only
+ * approving one (migration add_returns_and_catalog_reservations'
+ * `returns_stock_on_approval` trigger) restores `products.stock_quantity`;
+ * a rejection or a still-pending request never touches it.
+ */
+export interface Return {
+  id: string;
+  account_id: string;
+  conversation_id?: string | null;
+  contact_id?: string | null;
+  deal_id?: string | null;
+  deal_item_id?: string | null;
+  product_id: string | null;
+  product_name: string;
+  quantity: number;
+  status: ReturnStatus;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  created_at: string;
+  contact?: Contact;
+}
+
 export type ConversationStatus = 'open' | 'pending' | 'closed';
 
 export interface Conversation {

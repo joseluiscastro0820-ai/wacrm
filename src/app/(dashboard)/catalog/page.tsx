@@ -50,6 +50,12 @@ export default function CatalogPage() {
   const canDelete = useCan("edit-settings"); // admin+, mirrors products_delete RLS
 
   const [products, setProducts] = useState<Product[] | null>(null);
+  // Sum of deal_items.quantity across still-open deals (pedidos
+  // agendados/en curso), per product — never written to stock_quantity
+  // itself (stock only moves when a deal is marked "Ganado"), just
+  // surfaced so the team can see what's already spoken for before
+  // promising the same units to someone else.
+  const [reservedByProduct, setReservedByProduct] = useState<Record<string, number>>({});
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState<Product | null>(null);
@@ -57,15 +63,24 @@ export default function CatalogPage() {
 
   const load = useCallback(async () => {
     if (!accountId) return;
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .order("name");
-    if (error) {
+    const [productsRes, reservedRes] = await Promise.all([
+      supabase.from("products").select("*").order("name"),
+      supabase
+        .from("deal_items")
+        .select("product_id, quantity, deals!inner(status)")
+        .eq("deals.status", "open"),
+    ]);
+    if (productsRes.error) {
       toast.error(t("toastLoadFailed"));
       return;
     }
-    setProducts((data ?? []) as Product[]);
+    setProducts((productsRes.data ?? []) as Product[]);
+    const reserved: Record<string, number> = {};
+    for (const row of (reservedRes.data ?? []) as { product_id: string | null; quantity: number }[]) {
+      if (!row.product_id) continue;
+      reserved[row.product_id] = (reserved[row.product_id] ?? 0) + row.quantity;
+    }
+    setReservedByProduct(reserved);
   }, [supabase, accountId, t]);
 
   useEffect(() => {
@@ -159,7 +174,7 @@ export default function CatalogPage() {
                     {formatCurrency(p.price, p.currency)}
                   </TableCell>
                   <TableCell>
-                    <StockBadge product={p} t={t} />
+                    <StockBadge product={p} reserved={reservedByProduct[p.id] ?? 0} t={t} />
                   </TableCell>
                   <TableCell>
                     {p.is_active ? (
@@ -238,11 +253,23 @@ export default function CatalogPage() {
 /** Stock pill: made-to-order (track_stock off), out, low, or healthy. */
 function StockBadge({
   product,
+  reserved,
   t,
 }: {
   product: Product;
+  reserved: number;
   t: ReturnType<typeof useTranslations>;
 }) {
+  // Reservation note only means something for a stock-tracked product
+  // that actually has an open pedido against it — made-to-order items
+  // don't have a stock number to reserve from in the first place.
+  const reservedNote =
+    product.track_stock && reserved > 0 ? (
+      <p className="mt-0.5 text-[11px] text-amber-400">
+        {t("reservedNote", { count: reserved })}
+      </p>
+    ) : null;
+
   if (!product.track_stock) {
     return (
       <Badge variant="outline" className="border-sky-600/40 bg-sky-500/10 text-sky-300">
@@ -252,22 +279,31 @@ function StockBadge({
   }
   if (product.stock_quantity <= 0) {
     return (
-      <Badge variant="outline" className="border-red-600/40 bg-red-500/10 text-red-300">
-        {t("stockOut")}
-      </Badge>
+      <div>
+        <Badge variant="outline" className="border-red-600/40 bg-red-500/10 text-red-300">
+          {t("stockOut")}
+        </Badge>
+        {reservedNote}
+      </div>
     );
   }
   if (product.stock_quantity <= 5) {
     return (
-      <Badge variant="outline" className="border-amber-600/40 bg-amber-500/10 text-amber-300">
-        {t("stockLow", { count: product.stock_quantity })}
-      </Badge>
+      <div>
+        <Badge variant="outline" className="border-amber-600/40 bg-amber-500/10 text-amber-300">
+          {t("stockLow", { count: product.stock_quantity })}
+        </Badge>
+        {reservedNote}
+      </div>
     );
   }
   return (
-    <Badge variant="outline" className="border-border text-foreground">
-      {t("stockAvailable", { count: product.stock_quantity })}
-    </Badge>
+    <div>
+      <Badge variant="outline" className="border-border text-foreground">
+        {t("stockAvailable", { count: product.stock_quantity })}
+      </Badge>
+      {reservedNote}
+    </div>
   );
 }
 
