@@ -13,6 +13,7 @@ import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
 import { sendMessageToConversation } from '@/lib/whatsapp/send-message'
 import { sendAdminAlert } from '@/lib/whatsapp/send-admin-alert'
+import { sendAccountPush } from '@/lib/push/send-push'
 import {
   handleTemplateWebhookChange,
   isTemplateWebhookField,
@@ -649,6 +650,13 @@ async function maybeHandleReturnRequest(
       accountId,
       `Nueva devolución pendiente: ${item.quantity}x "${item.product_name}".`,
     )
+    // Native push (Fase 2) — opens straight into the Acciones page's
+    // devoluciones queue.
+    void sendAccountPush(accountId, {
+      title: 'Nueva devolución pendiente',
+      body: `${item.quantity}x "${item.product_name}"`,
+      path: '/actions',
+    })
   } catch (err) {
     console.error('[returns] failed to process return request:', err)
   }

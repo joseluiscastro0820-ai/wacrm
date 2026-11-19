@@ -6,6 +6,7 @@ import { generateReply } from './generate'
 import { buildSystemPrompt } from './defaults'
 import { buildHandoffSummary } from './handoff'
 import { sendAdminAlert } from '@/lib/whatsapp/send-admin-alert'
+import { sendAccountPush } from '@/lib/push/send-push'
 import { logAiUsage } from './usage'
 import { latestUserMessage } from './query'
 import { buildAiTools, executeAiTool } from './tools'
@@ -273,6 +274,13 @@ export async function dispatchInboundToAiReply(
           handoffNote ? ` (${handoffNote})` : ''
         }`,
       )
+      // Native push (Fase 2) — deep-links straight into the thread via
+      // the same /inbox?c=<id> mechanism the Acciones page uses.
+      void sendAccountPush(accountId, {
+        title: 'Chat entregado a un humano',
+        body: handoffNote || 'La IA no pudo responder y necesita tu ayuda.',
+        path: `/inbox?c=${conversationId}`,
+      })
       return
     }
 

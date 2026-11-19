@@ -173,6 +173,11 @@ export const RATE_LIMITS = {
    *  capping a stampede; excess inbounds simply don't get an auto-reply
    *  (they still land in the inbox for a human). */
   aiAutoReplyAccount: { limit: 30, windowMs: 60_000 },
+  /** FCM device-token registration from the Android app shell
+   *  (Fase 2), per user. Fires automatically on app start and on
+   *  token refresh — rare in practice — so 10/min is generous
+   *  headroom while still bounding a buggy retry loop. */
+  pushTokenRegister: { limit: 10, windowMs: 60_000 },
 } as const;
 
 /** Test-only helper. Clears the in-memory state so unit tests don't

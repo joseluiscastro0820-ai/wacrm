@@ -398,6 +398,16 @@ export function DealForm({
     toast.success(
       status === "won" ? t("toastMarkedWon") : status === "lost" ? t("toastMarkedLost") : t("toastReopened"),
     );
+    if (status === "won") {
+      // Fire-and-forget native push to any registered Android device
+      // (Fase 2) — never blocks this flow or surfaces its own errors,
+      // same contract as the rest of the push/alert pipeline.
+      fetch("/api/push/notify-deal-won", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId: deal.id }),
+      }).catch(() => {});
+    }
     onOpenChange(false);
     onSaved();
   }
