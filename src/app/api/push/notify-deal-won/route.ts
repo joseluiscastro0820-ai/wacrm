@@ -3,6 +3,9 @@ import { getCurrentAccount, toErrorResponse } from '@/lib/auth/account'
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit'
 import { sendAccountPush } from '@/lib/push/send-push'
 import { formatCurrency } from '@/lib/currency'
+import { ensureOrderCode } from '@/lib/deals/order-code'
+import { sendMessageToConversation } from '@/lib/whatsapp/send-message'
+import { supabaseAdmin } from '@/lib/flows/admin-client'
 
 function bad(message: string) {
   return NextResponse.json({ error: message }, { status: 400 })
@@ -44,7 +47,7 @@ export async function POST(request: Request) {
     // explicit .eq keeps the intent obvious and costs nothing.
     const { data: deal, error } = await supabase
       .from('deals')
-      .select('id, title, value, currency, status, contact:contacts(name, phone)')
+      .select('id, title, value, currency, status, conversation_id, contact:contacts(name, phone)')
       .eq('id', dealId)
       .eq('account_id', accountId)
       .maybeSingle()
@@ -64,6 +67,24 @@ export async function POST(request: Request) {
       body: `"${deal.title}" (${formatCurrency(deal.value, deal.currency)}) — ${who}. Márcalo en Acciones.`,
       path: '/actions',
     })
+
+    // Assigns the order its receipt code (idempotent — a deal moved
+    // won → lost → won again keeps the same one) and sends it to the
+    // customer, so the AI's order tools (lookup_order/cancel_order/
+    // request_return — see src/lib/ai/tools.ts) have something to ask
+    // for later. Best-effort: never lets a WhatsApp hiccup affect the
+    // push notification above, which already succeeded.
+    const admin = supabaseAdmin()
+    const orderCode = await ensureOrderCode(admin, deal.id)
+    if (orderCode && deal.conversation_id) {
+      await sendMessageToConversation(admin, accountId, {
+        conversationId: deal.conversation_id,
+        messageType: 'text',
+        contentText: `✅ Tu pedido fue confirmado. Código: ${orderCode} — guárdalo, lo necesitarás si deseas cancelarlo o solicitar una devolución más adelante.`,
+      }).catch((err) =>
+        console.error('[push/notify-deal-won] order-code message failed:', err),
+      )
+    }
 
     return NextResponse.json({ ok: true })
   } catch (err) {

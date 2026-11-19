@@ -12,8 +12,7 @@ import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
 import { sendMessageToConversation } from '@/lib/whatsapp/send-message'
-import { sendAdminAlert } from '@/lib/whatsapp/send-admin-alert'
-import { sendAccountPush } from '@/lib/push/send-push'
+import { createPendingReturn } from '@/lib/returns/create-pending-return'
 import {
   handleTemplateWebhookChange,
   isTemplateWebhookField,
@@ -619,16 +618,17 @@ async function maybeHandleReturnRequest(
       return
     }
 
-    await supabaseAdmin().from('returns').insert({
-      account_id: accountId,
-      conversation_id: conversation.id,
-      contact_id: contactRecord.id,
-      deal_id: item.deal_id,
-      deal_item_id: item.id,
-      product_id: item.product_id,
-      product_name: item.product_name,
-      quantity: item.quantity,
-      status: 'pending',
+    await createPendingReturn(supabaseAdmin(), {
+      accountId,
+      conversationId: conversation.id,
+      contactId: contactRecord.id,
+      item: {
+        id: item.id,
+        deal_id: item.deal_id,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        quantity: item.quantity,
+      },
     })
 
     // Hardcoded Spanish: this confirms to the CUSTOMER, not the app UI
@@ -641,22 +641,6 @@ async function maybeHandleReturnRequest(
     }).catch((err) =>
       console.error('[returns] confirmation message send failed:', err)
     )
-
-    // Unlike a conversation handoff, a pending return creates no
-    // in-app notification at all today (see migration 042's ops
-    // notes) — this WhatsApp ping to the admin is the only alert.
-    // Best-effort / never throws, see sendAdminAlert.
-    void sendAdminAlert(
-      accountId,
-      `Nueva devolución pendiente: ${item.quantity}x "${item.product_name}".`,
-    )
-    // Native push (Fase 2) — opens straight into the Acciones page's
-    // devoluciones queue.
-    void sendAccountPush(accountId, {
-      title: 'Nueva devolución pendiente',
-      body: `${item.quantity}x "${item.product_name}"`,
-      path: '/actions',
-    })
   } catch (err) {
     console.error('[returns] failed to process return request:', err)
   }
