@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "228305104953",
+    "project_id": "agent-free-crm",
+    "storage_bucket": "agent-free-crm.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:228305104953:android:063423c02a26e9f1895de8",
+        "android_client_info": {
+          "package_name": "com.innovaappstudio.agentfree"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2rpcdeC6d51WRf6TblrDjiUNKBKGMDwA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
