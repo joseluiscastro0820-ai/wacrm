@@ -2180,6 +2180,10 @@
     "emptySales": "No sales recorded yet.",
     "emptyScheduled": "No scheduled orders.",
     "emptyCancelled": "No cancelled orders.",
+    "emptyFiltered": "No results in the selected date range.",
+    "filterFrom": "From",
+    "filterTo": "To",
+    "filterClear": "Clear",
     "toastLoadFailed": "Failed to load billing data"
   },
   "Actions": {

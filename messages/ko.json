@@ -2180,6 +2180,10 @@
     "emptySales": "아직 등록된 판매가 없습니다.",
     "emptyScheduled": "예약된 주문이 없습니다.",
     "emptyCancelled": "취소된 주문이 없습니다.",
+    "emptyFiltered": "선택한 기간에 해당하는 결과가 없습니다.",
+    "filterFrom": "시작일",
+    "filterTo": "종료일",
+    "filterClear": "지우기",
     "toastLoadFailed": "청구 데이터를 불러오지 못했습니다"
   },
   "Actions": {

@@ -2180,6 +2180,10 @@
     "emptySales": "Todavía no hay ventas registradas.",
     "emptyScheduled": "No hay pedidos agendados.",
     "emptyCancelled": "No hay pedidos cancelados.",
+    "emptyFiltered": "No hay resultados en el rango de fechas seleccionado.",
+    "filterFrom": "Desde",
+    "filterTo": "Hasta",
+    "filterClear": "Limpiar",
     "toastLoadFailed": "No se pudieron cargar los datos de facturación"
   },
   "Actions": {

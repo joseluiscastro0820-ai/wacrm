@@ -8,8 +8,12 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useDateFnsLocale } from "@/i18n/date-locale";
 import { formatCurrency } from "@/lib/currency";
+import { isWithinDateRange } from "@/lib/billing/date-filter";
 import type { Deal } from "@/types";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Table,
@@ -19,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckCircle2, Clock, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, Loader2, X, XCircle } from "lucide-react";
 
 type ContactLite = { name: string | null; phone: string | null } | null;
 type ItemLite = { product_name: string; quantity: number };
@@ -67,6 +71,14 @@ export default function BillingPage() {
   const [scheduled, setScheduled] = useState<BillingDeal[] | null>(null);
   const [cancelled, setCancelled] = useState<BillingDeal[] | null>(null);
 
+  // "YYYY-MM-DD" from a date <input>, or "" for unbounded. Filters the
+  // "Fecha" column (created_at) client-side — the three lists are
+  // already fully loaded (capped at 200 each), so there's no reason to
+  // round-trip to Supabase just to narrow a range already in memory.
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const dateFilterActive = !!(dateFrom || dateTo);
+
   const load = useCallback(async () => {
     if (!accountId) return;
     const [salesRes, scheduledRes, cancelledRes] = await Promise.all([
@@ -104,6 +116,16 @@ export default function BillingPage() {
   }, [load]);
 
   const loading = sales === null || scheduled === null || cancelled === null;
+
+  function filterByDate(deals: BillingDeal[] | null): BillingDeal[] {
+    if (!deals) return [];
+    if (!dateFilterActive) return deals;
+    return deals.filter((d) => isWithinDateRange(d.created_at, dateFrom, dateTo));
+  }
+
+  const filteredSales = filterByDate(sales);
+  const filteredScheduled = filterByDate(scheduled);
+  const filteredCancelled = filterByDate(cancelled);
 
   function sumTotal(deals: BillingDeal[]) {
     return deals.reduce(
@@ -143,13 +165,15 @@ export default function BillingPage() {
     if (deals.length === 0) {
       return (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          {t(
-            variant === "sales"
-              ? "emptySales"
-              : variant === "scheduled"
-                ? "emptyScheduled"
-                : "emptyCancelled",
-          )}
+          {dateFilterActive
+            ? t("emptyFiltered")
+            : t(
+                variant === "sales"
+                  ? "emptySales"
+                  : variant === "scheduled"
+                    ? "emptyScheduled"
+                    : "emptyCancelled",
+              )}
         </p>
       );
     }
@@ -230,24 +254,68 @@ export default function BillingPage() {
         </div>
       ) : (
         <>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="billing-date-from" className="text-xs text-muted-foreground">
+                {t("filterFrom")}
+              </Label>
+              <Input
+                id="billing-date-from"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                max={dateTo || undefined}
+                className="bg-muted border-border text-foreground h-9 w-auto"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="billing-date-to" className="text-xs text-muted-foreground">
+                {t("filterTo")}
+              </Label>
+              <Input
+                id="billing-date-to"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                min={dateFrom || undefined}
+                className="bg-muted border-border text-foreground h-9 w-auto"
+              />
+            </div>
+            {dateFilterActive && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+                className="border-border text-muted-foreground hover:bg-muted"
+              >
+                <X className="h-3.5 w-3.5" />
+                {t("filterClear")}
+              </Button>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <SummaryCard
               icon={<CheckCircle2 className="h-4 w-4 text-emerald-400" />}
               label={t("summarySales")}
-              total={formatCurrency(sumTotal(sales), defaultCurrency)}
-              count={t("summarySalesCount", { count: sales.length })}
+              total={formatCurrency(sumTotal(filteredSales), defaultCurrency)}
+              count={t("summarySalesCount", { count: filteredSales.length })}
             />
             <SummaryCard
               icon={<Clock className="h-4 w-4 text-sky-400" />}
               label={t("summaryScheduled")}
-              total={formatCurrency(sumTotal(scheduled), defaultCurrency)}
-              count={t("summaryScheduledCount", { count: scheduled.length })}
+              total={formatCurrency(sumTotal(filteredScheduled), defaultCurrency)}
+              count={t("summaryScheduledCount", { count: filteredScheduled.length })}
             />
             <SummaryCard
               icon={<XCircle className="h-4 w-4 text-red-400" />}
               label={t("summaryCancelled")}
-              total={formatCurrency(sumTotal(cancelled), defaultCurrency)}
-              count={t("summaryCancelledCount", { count: cancelled.length })}
+              total={formatCurrency(sumTotal(filteredCancelled), defaultCurrency)}
+              count={t("summaryCancelledCount", { count: filteredCancelled.length })}
             />
           </div>
 
@@ -258,13 +326,13 @@ export default function BillingPage() {
               <TabsTrigger value="cancelled">{t("tabCancelled")}</TabsTrigger>
             </TabsList>
             <TabsContent value="sales" className="mt-4">
-              {renderTable(sales, "sales")}
+              {renderTable(filteredSales, "sales")}
             </TabsContent>
             <TabsContent value="scheduled" className="mt-4">
-              {renderTable(scheduled, "scheduled")}
+              {renderTable(filteredScheduled, "scheduled")}
             </TabsContent>
             <TabsContent value="cancelled" className="mt-4">
-              {renderTable(cancelled, "cancelled")}
+              {renderTable(filteredCancelled, "cancelled")}
             </TabsContent>
           </Tabs>
         </>
