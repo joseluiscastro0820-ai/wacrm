@@ -1,0 +1,27 @@
+Add Acciones page: order fulfillment status, handoff chats, returns queue (Fase 1)
+
+Jose asked for a mobile-usable way to do the human side of order
+handling without waiting for the Android app (Fase 2/3, still
+pending): mark pedidos "en proceso"/"despachado", give any
+confirmation a handed-off chat needs, and review devoluciones - all
+from one page reachable from any browser.
+
+- 044_deal_fulfillment_status.sql: adds deals.in_process_at /
+  dispatched_at (nullable timestamps, no new RLS needed - already
+  covered by the existing deals_update policy).
+- New /actions page: aggregates conversations the AI handed off
+  (linking into the existing /inbox?c=<id> deep link for real-time
+  view + reply), pending devoluciones (same review pattern as
+  /returns), and won deals awaiting dispatch, with quick-action
+  buttons for the latter two.
+- New useActionsPending hook + sidebar nav entry/badge, mirroring the
+  existing useTotalUnread/useUnreadNotifications pattern.
+- Also reconciles 043_delivery_zones_and_volume_discounts.sql: removes
+  the DROP POLICY IF EXISTS lines that were never actually applied
+  (they triggered an unresolvable confirmation timeout) - the live DB
+  has this table under a differently-named migration
+  (043_..._v2) without them; this just makes the committed file match
+  what's actually in production.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01QRJsRoMGLJCmHr4Uceu9YW

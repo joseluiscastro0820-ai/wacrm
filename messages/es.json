@@ -128,6 +128,7 @@
     "beta": "Beta",
     "unreadConversations": "{count} sin leer {count, plural, =1 {conversación} other {conversaciones}}",
     "unreadNotifications": "{count} sin leer {count, plural, =1 {notificación} other {notificaciones}}",
+    "pendingActions": "{count} {count, plural, =1 {acción pendiente} other {acciones pendientes}}",
     "roleOwner": "Propietario",
     "roleAdmin": "Administrador",
     "roleAgent": "Agente",
@@ -139,7 +140,8 @@
     "menuSettings": "Configuración",
     "menuSignOut": "Cerrar sesión",
     "catalog": "Catálogo",
-    "returns": "Devoluciones"
+    "returns": "Devoluciones",
+    "actions": "Acciones"
   },
   "Header": {
     "dashboard": "Panel",
@@ -2128,6 +2130,33 @@
     "toastReviewFailed": "No se pudo actualizar la solicitud",
     "toastApproved": "Devolución aprobada, stock actualizado",
     "toastRejected": "Devolución rechazada"
+  },
+  "Actions": {
+    "title": "Acciones",
+    "subtitle": "Todo lo que necesita una decisión humana, en un solo lugar: chats que la IA entregó, devoluciones por revisar y pedidos por despachar.",
+    "emptyTitle": "No hay acciones pendientes",
+    "emptyDesc": "Cuando un chat pase a un humano, llegue una devolución o haya un pedido ganado por despachar, aparecerá aquí.",
+    "handoffSection": "Chats que necesitan un humano ({count})",
+    "returnsSection": "Devoluciones pendientes ({count})",
+    "dispatchSection": "Pedidos por despachar ({count})",
+    "seeAll": "Ver todas",
+    "colContact": "Contacto",
+    "colProduct": "Producto",
+    "colQuantity": "Cantidad",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "unknownContact": "Contacto desconocido",
+    "noPreview": "Sin mensajes recientes",
+    "statusInProcess": "En proceso",
+    "markInProcess": "En proceso",
+    "markDispatched": "Despachado",
+    "toastLoadFailed": "No se pudieron cargar las acciones",
+    "toastReviewFailed": "No se pudo actualizar la solicitud",
+    "toastApproved": "Devolución aprobada, stock actualizado",
+    "toastRejected": "Devolución rechazada",
+    "toastDealUpdateFailed": "No se pudo actualizar el pedido",
+    "toastMarkedInProcess": "Pedido marcado como en proceso",
+    "toastMarkedDispatched": "Pedido marcado como despachado"
   },
   "Manifest": {
     "name": "Agent Free WhatsApp",

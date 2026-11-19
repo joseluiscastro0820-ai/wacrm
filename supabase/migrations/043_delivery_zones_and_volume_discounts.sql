@@ -41,10 +41,6 @@ CREATE INDEX IF NOT EXISTS idx_delivery_zones_account ON delivery_zones(account_
 
 ALTER TABLE delivery_zones ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS delivery_zones_select ON delivery_zones;
-DROP POLICY IF EXISTS delivery_zones_insert ON delivery_zones;
-DROP POLICY IF EXISTS delivery_zones_update ON delivery_zones;
-DROP POLICY IF EXISTS delivery_zones_delete ON delivery_zones;
 CREATE POLICY delivery_zones_select ON delivery_zones FOR SELECT
   USING (is_account_member(account_id));
 CREATE POLICY delivery_zones_insert ON delivery_zones FOR INSERT
@@ -68,10 +64,6 @@ CREATE INDEX IF NOT EXISTS idx_volume_discounts_account ON volume_discounts(acco
 
 ALTER TABLE volume_discounts ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS volume_discounts_select ON volume_discounts;
-DROP POLICY IF EXISTS volume_discounts_insert ON volume_discounts;
-DROP POLICY IF EXISTS volume_discounts_update ON volume_discounts;
-DROP POLICY IF EXISTS volume_discounts_delete ON volume_discounts;
 CREATE POLICY volume_discounts_select ON volume_discounts FOR SELECT
   USING (is_account_member(account_id));
 CREATE POLICY volume_discounts_insert ON volume_discounts FOR INSERT

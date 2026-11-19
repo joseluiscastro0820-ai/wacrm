@@ -7,12 +7,14 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useTotalUnread } from "@/hooks/use-total-unread";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
+import { useActionsPending } from "@/hooks/use-actions-pending";
 import {
   Bell,
   Bot,
   Crown,
   GitBranch,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   MessageSquare,
   Package,
@@ -113,6 +115,12 @@ const navItems: NavItem[] = [
     iconBg: "bg-blue-500/15 text-blue-400",
   },
   {
+    href: "/actions",
+    labelKey: "actions",
+    icon: ListChecks,
+    iconBg: "bg-teal-500/15 text-teal-400",
+  },
+  {
     href: "/notifications",
     labelKey: "notifications",
     icon: Bell,
@@ -192,6 +200,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const { profile, profileLoading, account, accountRole, signOut } = useAuth();
   const totalUnread = useTotalUnread();
   const unreadNotifications = useUnreadNotifications();
+  const actionsPending = useActionsPending();
   // Only surface the account-name strip when it actually carries
   // information. A solo user's personal account is named after them
   // (the 017 signup trigger seeds it from `full_name`), so showing it
@@ -301,6 +310,12 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               const showNotificationBadge =
                 item.href === "/notifications" && unreadNotifications > 0;
 
+              // Same "stays visible while active" idiom as Notifications —
+              // Acciones reflects a queue of pending work (handoff chats +
+              // pending devoluciones), not "currently viewing this page".
+              const showActionsBadge =
+                item.href === "/actions" && actionsPending > 0;
+
               return (
                 <li key={item.href}>
                   <Link
@@ -345,6 +360,14 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                         className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
                       >
                         {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                      </span>
+                    )}
+                    {showActionsBadge && (
+                      <span
+                        aria-label={t("pendingActions", { count: actionsPending })}
+                        className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
+                      >
+                        {actionsPending > 9 ? "9+" : actionsPending}
                       </span>
                     )}
                   </Link>

@@ -128,6 +128,7 @@
     "beta": "Beta",
     "unreadConversations": "{count} unread {count, plural, =1 {conversation} other {conversations}}",
     "unreadNotifications": "{count} unread {count, plural, =1 {notification} other {notifications}}",
+    "pendingActions": "{count} pending {count, plural, =1 {action} other {actions}}",
     "roleOwner": "Owner",
     "roleAdmin": "Admin",
     "roleAgent": "Agent",
@@ -139,7 +140,8 @@
     "menuSettings": "Settings",
     "menuSignOut": "Sign out",
     "catalog": "Catalog",
-    "returns": "Returns"
+    "returns": "Returns",
+    "actions": "Actions"
   },
   "Header": {
     "dashboard": "Dashboard",
@@ -2128,6 +2130,33 @@
     "toastReviewFailed": "Failed to update the request",
     "toastApproved": "Return approved, stock updated",
     "toastRejected": "Return rejected"
+  },
+  "Actions": {
+    "title": "Actions",
+    "subtitle": "Everything that needs a human decision, in one place: chats the AI handed off, returns to review, and orders to dispatch.",
+    "emptyTitle": "No pending actions",
+    "emptyDesc": "When a chat is handed off to a human, a return comes in, or a won deal is waiting to be dispatched, it'll show up here.",
+    "handoffSection": "Chats needing a human ({count})",
+    "returnsSection": "Pending returns ({count})",
+    "dispatchSection": "Orders to dispatch ({count})",
+    "seeAll": "See all",
+    "colContact": "Contact",
+    "colProduct": "Product",
+    "colQuantity": "Quantity",
+    "approve": "Approve",
+    "reject": "Reject",
+    "unknownContact": "Unknown contact",
+    "noPreview": "No recent messages",
+    "statusInProcess": "In process",
+    "markInProcess": "In process",
+    "markDispatched": "Dispatched",
+    "toastLoadFailed": "Failed to load actions",
+    "toastReviewFailed": "Failed to update the request",
+    "toastApproved": "Return approved, stock updated",
+    "toastRejected": "Return rejected",
+    "toastDealUpdateFailed": "Failed to update the order",
+    "toastMarkedInProcess": "Order marked as in process",
+    "toastMarkedDispatched": "Order marked as dispatched"
   },
   "Manifest": {
     "name": "Agent Free WhatsApp",

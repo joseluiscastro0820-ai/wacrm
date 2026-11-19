@@ -488,6 +488,10 @@ export interface Deal {
   delivery_fee?: number | null;
   /** Cuándo se envió (una sola vez) el mensaje de condiciones del pedido. Null = aún no enviado. */
   dispatch_terms_sent_at?: string | null;
+  /** Cuándo se marcó el pedido "en proceso" (preparación). Null = aún no. Ver página Acciones. */
+  in_process_at?: string | null;
+  /** Cuándo se marcó el pedido "despachado" (enviado). Null = aún no. Ver página Acciones. */
+  dispatched_at?: string | null;
   created_at: string;
   updated_at?: string;
   contact?: Contact;

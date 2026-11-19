@@ -114,6 +114,7 @@
     "beta": "베타",
     "unreadConversations": "읽지 않은 대화 {count}건",
     "unreadNotifications": "읽지 않은 알림 {count}건",
+    "pendingActions": "대기 중인 작업 {count}건",
     "roleOwner": "소유자",
     "roleAdmin": "관리자",
     "roleAgent": "상담원",
@@ -125,7 +126,8 @@
     "menuSettings": "설정",
     "menuSignOut": "로그아웃",
     "catalog": "카탈로그",
-    "returns": "반품"
+    "returns": "반품",
+    "actions": "작업"
   },
   "Header": {
     "dashboard": "대시보드",
@@ -2128,6 +2130,33 @@
     "toastReviewFailed": "요청을 업데이트하지 못했습니다",
     "toastApproved": "반품이 승인되어 재고가 업데이트되었습니다",
     "toastRejected": "반품이 거절되었습니다"
+  },
+  "Actions": {
+    "title": "작업",
+    "subtitle": "사람의 결정이 필요한 모든 것을 한 곳에서: AI가 넘긴 채팅, 검토할 반품, 발송할 주문.",
+    "emptyTitle": "대기 중인 작업이 없습니다",
+    "emptyDesc": "채팅이 사람에게 넘어오거나, 반품이 접수되거나, 발송을 기다리는 성사된 거래가 있으면 여기에 표시됩니다.",
+    "handoffSection": "사람이 필요한 채팅 ({count})",
+    "returnsSection": "대기 중인 반품 ({count})",
+    "dispatchSection": "발송할 주문 ({count})",
+    "seeAll": "전체 보기",
+    "colContact": "연락처",
+    "colProduct": "제품",
+    "colQuantity": "수량",
+    "approve": "승인",
+    "reject": "거절",
+    "unknownContact": "알 수 없는 연락처",
+    "noPreview": "최근 메시지 없음",
+    "statusInProcess": "처리 중",
+    "markInProcess": "처리 중",
+    "markDispatched": "발송됨",
+    "toastLoadFailed": "작업을 불러오지 못했습니다",
+    "toastReviewFailed": "요청을 업데이트하지 못했습니다",
+    "toastApproved": "반품이 승인되어 재고가 업데이트되었습니다",
+    "toastRejected": "반품이 거절되었습니다",
+    "toastDealUpdateFailed": "주문을 업데이트하지 못했습니다",
+    "toastMarkedInProcess": "주문이 처리 중으로 표시되었습니다",
+    "toastMarkedDispatched": "주문이 발송됨으로 표시되었습니다"
   },
   "Manifest": {
     "name": "WhatsApp용 CRM 템플릿",
