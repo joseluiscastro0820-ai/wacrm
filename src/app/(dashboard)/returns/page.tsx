@@ -8,7 +8,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useDateFnsLocale } from "@/i18n/date-locale";
-import type { Return, ReturnStatus } from "@/types";
+import type { Return, ReturnReasonCategory, ReturnStatus } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,6 +78,25 @@ export default function ReturnsPage() {
     await load();
   }
 
+  /** Badge for the AI's reason_category (migration 047) — null for
+   *  returns filed before it existed or via the interactive-list path,
+   *  which doesn't ask. */
+  function ReasonBadge({ category }: { category: ReturnReasonCategory | null | undefined }) {
+    if (!category) return <span className="text-muted-foreground">—</span>;
+    if (category === "warranty") {
+      return (
+        <Badge variant="outline" className="border-amber-600/40 bg-amber-500/10 text-amber-300">
+          {t("reasonWarranty")}
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="text-muted-foreground">
+        {t("reasonChangeOfMind")}
+      </Badge>
+    );
+  }
+
   const pending = returns?.filter((r) => r.status === "pending") ?? [];
   const resolved = returns?.filter((r) => r.status !== "pending") ?? [];
 
@@ -114,6 +133,7 @@ export default function ReturnsPage() {
                       <TableHead>{t("colContact")}</TableHead>
                       <TableHead>{t("colProduct")}</TableHead>
                       <TableHead>{t("colQuantity")}</TableHead>
+                      <TableHead>{t("colReason")}</TableHead>
                       <TableHead>{t("colRequested")}</TableHead>
                       <TableHead className="w-32" />
                     </TableRow>
@@ -124,8 +144,18 @@ export default function ReturnsPage() {
                         <TableCell className="text-foreground">
                           {r.contact?.name?.trim() || r.contact?.phone || t("unknownContact")}
                         </TableCell>
-                        <TableCell className="text-foreground">{r.product_name}</TableCell>
+                        <TableCell className="text-foreground">
+                          {r.product_name}
+                          {r.customer_note && (
+                            <div className="max-w-xs truncate text-xs text-muted-foreground">
+                              {r.customer_note}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">{r.quantity}</TableCell>
+                        <TableCell>
+                          <ReasonBadge category={r.reason_category} />
+                        </TableCell>
                         <TableCell className="text-muted-foreground">
                           {formatDistanceToNow(new Date(r.created_at), {
                             addSuffix: true,
@@ -182,6 +212,7 @@ export default function ReturnsPage() {
                       <TableHead>{t("colContact")}</TableHead>
                       <TableHead>{t("colProduct")}</TableHead>
                       <TableHead>{t("colQuantity")}</TableHead>
+                      <TableHead>{t("colReason")}</TableHead>
                       <TableHead>{t("colStatus")}</TableHead>
                       <TableHead>{t("colRequested")}</TableHead>
                     </TableRow>
@@ -192,8 +223,18 @@ export default function ReturnsPage() {
                         <TableCell className="text-foreground">
                           {r.contact?.name?.trim() || r.contact?.phone || t("unknownContact")}
                         </TableCell>
-                        <TableCell className="text-foreground">{r.product_name}</TableCell>
+                        <TableCell className="text-foreground">
+                          {r.product_name}
+                          {r.customer_note && (
+                            <div className="max-w-xs truncate text-xs text-muted-foreground">
+                              {r.customer_note}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">{r.quantity}</TableCell>
+                        <TableCell>
+                          <ReasonBadge category={r.reason_category} />
+                        </TableCell>
                         <TableCell>
                           {r.status === "approved" ? (
                             <Badge variant="outline" className="border-emerald-600/40 bg-emerald-500/10 text-emerald-300">

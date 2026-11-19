@@ -50,6 +50,7 @@ export default function CatalogPage() {
   const canDelete = useCan("edit-settings"); // admin+, mirrors products_delete RLS
 
   const [products, setProducts] = useState<Product[] | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   // Sum of deal_items.quantity across still-open deals (pedidos
   // agendados/en curso), per product — never written to stock_quantity
   // itself (stock only moves when a deal is marked "Ganado"), just
@@ -88,6 +89,20 @@ export default function CatalogPage() {
     load();
   }, [load]);
 
+  // Distinct categories already in use, for the filter dropdown and
+  // the product form's autocomplete — no separate categories table,
+  // this app's catalog is small enough that free text + suggestions
+  // from what's already there is simpler and just as useful.
+  const categories = Array.from(
+    new Set((products ?? []).map((p) => p.category?.trim()).filter((c): c is string => !!c)),
+  ).sort();
+  const visibleProducts =
+    categoryFilter === "all"
+      ? products
+      : categoryFilter === "none"
+        ? (products ?? []).filter((p) => !p.category?.trim())
+        : (products ?? []).filter((p) => p.category?.trim() === categoryFilter);
+
   function openCreate() {
     setEditing(null);
     setFormOpen(true);
@@ -119,12 +134,29 @@ export default function CatalogPage() {
           <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
-        {canEdit && (
-          <Button onClick={openCreate} className="shrink-0">
-            <Plus className="h-4 w-4" />
-            {t("addProduct")}
-          </Button>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {products && products.length > 0 && (
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="h-9 rounded-lg border border-border bg-muted px-2 text-sm text-foreground outline-none focus:border-primary"
+            >
+              <option value="all">{t("filterAllCategories")}</option>
+              <option value="none">{t("filterUncategorized")}</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          )}
+          {canEdit && (
+            <Button onClick={openCreate} className="shrink-0">
+              <Plus className="h-4 w-4" />
+              {t("addProduct")}
+            </Button>
+          )}
+        </div>
       </div>
 
       {products === null ? (
@@ -152,6 +184,7 @@ export default function CatalogPage() {
               <TableRow>
                 <TableHead>{t("colName")}</TableHead>
                 <TableHead>{t("colSku")}</TableHead>
+                <TableHead>{t("colCategory")}</TableHead>
                 <TableHead>{t("colPrice")}</TableHead>
                 <TableHead>{t("colStock")}</TableHead>
                 <TableHead>{t("colStatus")}</TableHead>
@@ -159,7 +192,7 @@ export default function CatalogPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map((p) => (
+              {(visibleProducts ?? []).map((p) => (
                 <TableRow key={p.id} className={!p.is_active ? "opacity-60" : undefined}>
                   <TableCell>
                     <div className="font-medium text-foreground">{p.name}</div>
@@ -170,6 +203,7 @@ export default function CatalogPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{p.sku || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{p.category || "—"}</TableCell>
                   <TableCell className="font-medium text-foreground">
                     {formatCurrency(p.price, p.currency)}
                   </TableCell>
@@ -219,6 +253,7 @@ export default function CatalogPage() {
           product={editing}
           userId={user?.id}
           accountId={accountId}
+          categories={categories}
           onClose={() => setFormOpen(false)}
           onSaved={async () => {
             setFormOpen(false);
@@ -287,7 +322,7 @@ function StockBadge({
       </div>
     );
   }
-  if (product.stock_quantity <= 5) {
+  if (product.stock_quantity <= product.low_stock_threshold) {
     return (
       <div>
         <Badge variant="outline" className="border-amber-600/40 bg-amber-500/10 text-amber-300">
@@ -311,12 +346,14 @@ function ProductForm({
   product,
   userId,
   accountId,
+  categories,
   onClose,
   onSaved,
 }: {
   product: Product | null;
   userId: string | undefined;
   accountId: string | null | undefined;
+  categories: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -326,11 +363,15 @@ function ProductForm({
 
   const [name, setName] = useState(product?.name ?? "");
   const [sku, setSku] = useState(product?.sku ?? "");
+  const [category, setCategory] = useState(product?.category ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
   const [price, setPrice] = useState(String(product?.price ?? ""));
   const [currency, setCurrency] = useState(product?.currency ?? DEFAULT_CURRENCY);
   const [stockQuantity, setStockQuantity] = useState(
     String(product?.stock_quantity ?? "0"),
+  );
+  const [lowStockThreshold, setLowStockThreshold] = useState(
+    String(product?.low_stock_threshold ?? "5"),
   );
   const [trackStock, setTrackStock] = useState(product?.track_stock ?? true);
   const [isActive, setIsActive] = useState(product?.is_active ?? true);
@@ -350,10 +391,12 @@ function ProductForm({
     const payload = {
       name: trimmedName,
       sku: sku.trim() || null,
+      category: category.trim() || null,
       description: description.trim() || null,
       price: Number(price) || 0,
       currency,
       stock_quantity: Math.max(0, Math.trunc(Number(stockQuantity) || 0)),
+      low_stock_threshold: Math.max(0, Math.trunc(Number(lowStockThreshold) || 0)),
       track_stock: trackStock,
       is_active: isActive,
     };
@@ -393,31 +436,46 @@ function ProductForm({
               <Label>{t("fieldSku")}</Label>
               <Input value={sku} onChange={(e) => setSku(e.target.value)} placeholder={t("fieldSkuPlaceholder")} />
             </div>
-            <div className="grid grid-cols-[1fr_90px] gap-2">
-              <div className="grid gap-2">
-                <Label>{t("fieldPrice")}</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="0"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>{t("fieldCurrency")}</Label>
-                <select
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className="h-9 w-full rounded-lg border border-border bg-muted px-2 text-sm text-foreground outline-none focus:border-primary"
-                >
-                  {CURRENCIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.code}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="grid gap-2">
+              <Label>{t("fieldCategory")}</Label>
+              <Input
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder={t("fieldCategoryPlaceholder")}
+                list="catalog-categories"
+              />
+              <datalist id="catalog-categories">
+                {categories.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-[1fr_90px] gap-2">
+            <div className="grid gap-2">
+              <Label>{t("fieldPrice")}</Label>
+              <Input
+                type="number"
+                min="0"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>{t("fieldCurrency")}</Label>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="h-9 w-full rounded-lg border border-border bg-muted px-2 text-sm text-foreground outline-none focus:border-primary"
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -440,15 +498,28 @@ function ProductForm({
           </div>
 
           {trackStock && (
-            <div className="grid gap-2">
-              <Label>{t("fieldStockQuantity")}</Label>
-              <Input
-                type="number"
-                min="0"
-                step="1"
-                value={stockQuantity}
-                onChange={(e) => setStockQuantity(e.target.value)}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label>{t("fieldStockQuantity")}</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={stockQuantity}
+                  onChange={(e) => setStockQuantity(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>{t("fieldLowStockThreshold")}</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={lowStockThreshold}
+                  onChange={(e) => setLowStockThreshold(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">{t("fieldLowStockThresholdDesc")}</p>
+              </div>
             </div>
           )}
 

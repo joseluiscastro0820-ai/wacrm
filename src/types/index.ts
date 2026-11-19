@@ -175,6 +175,16 @@ export interface Product {
    * made-to-order items or services with no meaningful stock count.
    */
   track_stock: boolean;
+  /** Below this many units on hand, the Catálogo badge and the AI's
+   *  check_product tool report "low stock" instead of "available".
+   *  Per-product (migration 047) — defaults to 5, today's old
+   *  hardcoded behavior, but a fast-moving item can raise it and a
+   *  slow one can lower it. */
+  low_stock_threshold: number;
+  /** Free-text grouping (e.g. "Bebidas") — lets the Catálogo be
+   *  filtered and gives the AI's check_product tool a coarser thing
+   *  to search by than an exact product name. Migration 047. */
+  category?: string | null;
   image_url?: string | null;
   /** Hidden from pickers (deal form, AI tools) when false, without deleting it. */
   is_active: boolean;
@@ -215,6 +225,10 @@ export interface VolumeDiscount {
 }
 
 export type ReturnStatus = 'pending' | 'approved' | 'rejected';
+/** 'change_of_mind' = customer no longer wants it; 'warranty' = arrived
+ *  damaged/defective. Null for returns filed before migration 047 and
+ *  for the interactive-list path, which doesn't ask. */
+export type ReturnReasonCategory = 'change_of_mind' | 'warranty';
 
 /**
  * A return request the CUSTOMER started by tapping a row on an
@@ -235,6 +249,10 @@ export interface Return {
   product_name: string;
   quantity: number;
   status: ReturnStatus;
+  reason_category?: ReturnReasonCategory | null;
+  /** Why the customer wants it, in their own words — set by the AI's
+   *  request_return tool; null for the interactive-list path. */
+  customer_note?: string | null;
   reviewed_by?: string | null;
   reviewed_at?: string | null;
   created_at: string;

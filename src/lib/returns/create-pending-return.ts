@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendAdminAlert } from '@/lib/whatsapp/send-admin-alert'
 import { sendAccountPush } from '@/lib/push/send-push'
+import type { ReturnReasonCategory } from '@/types'
 
 export interface PendingReturnItem {
   /** deal_items.id — the row being returned. */
@@ -41,9 +42,13 @@ export async function createPendingReturn(
     /** Why the customer wants to return it, in their own words — left
      *  null for the interactive-list path, which doesn't ask. */
     customerNote?: string | null
+    /** change_of_mind vs. warranty (migration 047) — set by the AI's
+     *  request_return tool, which now asks; left null for the
+     *  interactive-list path, same as customerNote. */
+    reasonCategory?: ReturnReasonCategory | null
   },
 ): Promise<{ error: string | null }> {
-  const { accountId, conversationId, contactId, item, customerNote } = args
+  const { accountId, conversationId, contactId, item, customerNote, reasonCategory } = args
 
   const { error } = await db.from('returns').insert({
     account_id: accountId,
@@ -56,6 +61,7 @@ export async function createPendingReturn(
     quantity: item.quantity,
     status: 'pending',
     customer_note: customerNote || null,
+    reason_category: reasonCategory || null,
   })
   if (error) return { error: error.message }
 

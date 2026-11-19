@@ -33,6 +33,13 @@
 // itself (account_id + contact_id) since these run on the
 // service-role client (RLS does not apply), exactly like
 // update_contact_field already does for custom fields.
+//
+// check_product (added 2026-11-19, same conversation) is the
+// "Inventario" half of the same request: a read-only lookup against
+// the account's own Catálogo (src/app/(dashboard)/catalog/page.tsx)
+// so the agent can tell a customer whether something is in stock
+// before promising it, instead of guessing. Account-scoped and
+// read-only, so it carries none of the write tools' risk.
 // ============================================================
 
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -42,6 +49,7 @@ import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { sendAdminAlert } from '@/lib/whatsapp/send-admin-alert'
 import { sendAccountPush } from '@/lib/push/send-push'
 import { createPendingReturn } from '@/lib/returns/create-pending-return'
+import { formatCurrency } from '@/lib/currency'
 import type { ToolDefinition } from './types'
 
 export interface ToolContext {
@@ -142,14 +150,31 @@ export async function buildAiTools(db: SupabaseClient, accountId: string): Promi
     {
       name: 'request_return',
       description:
-        'File a return for ONE item from one of the CURRENT contact\'s own orders (call lookup_order first to see the order\'s items and get the right item_id). This does NOT approve the return — it only files it for a human to review — so tell the customer an agent will check it soon, never that it is already approved or refunded.',
+        'File a return for ONE item from one of the CURRENT contact\'s own orders (call lookup_order first to see the order\'s items and get the right item_id). Always ask first whether the product arrived damaged/defective or it is a change of mind — this does NOT approve the return, it only files it for a human to review, so tell the customer an agent will check it soon, never that it is already approved or refunded.',
       parameters: {
         type: 'object',
         properties: {
           item_id: { type: 'string', description: "The deal item's id, exactly as lookup_order returned it." },
           reason: { type: 'string', description: 'Why the customer wants to return it, in their own words.' },
+          reason_category: {
+            type: 'string',
+            description: 'Whether the product arrived damaged/defective ("warranty") or the customer simply changed their mind ("change_of_mind"). Ask if it is not already clear from the conversation.',
+            enum: ['change_of_mind', 'warranty'],
+          },
         },
-        required: ['item_id', 'reason'],
+        required: ['item_id', 'reason', 'reason_category'],
+      },
+    },
+    {
+      name: 'check_product',
+      description:
+        'Look up products in the business\'s own catalog by name or category to tell the customer the price and whether it is in stock, before promising anything. Only returns real, active products from THIS business\'s catalog — never invent a product, price, or stock status. Returns up to 5 matches.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'A product name or category to search for, as the customer said it.' },
+        },
+        required: ['query'],
       },
     },
   )
@@ -300,7 +325,12 @@ const handlers: Record<string, ToolHandler> = {
   request_return: async (db, args, ctx) => {
     const itemId = typeof args.item_id === 'string' ? args.item_id.trim() : ''
     const reason = typeof args.reason === 'string' ? args.reason.trim() : ''
+    const reasonCategory =
+      args.reason_category === 'warranty' || args.reason_category === 'change_of_mind'
+        ? args.reason_category
+        : null
     if (!itemId || !reason) return 'request_return needs an item_id and a reason'
+    if (!reasonCategory) return 'request_return needs reason_category: ask the customer whether it arrived damaged/defective (warranty) or they changed their mind (change_of_mind)'
 
     const { data: item } = await db
       .from('deal_items')
@@ -325,10 +355,44 @@ const handlers: Record<string, ToolHandler> = {
         quantity: item.quantity,
       },
       customerNote: reason,
+      reasonCategory,
     })
     if (error) return 'request_return failed — tell the customer a human will follow up'
 
     return 'return filed, pending human review'
+  },
+
+  check_product: async (db, args, ctx) => {
+    const query = typeof args.query === 'string' ? args.query.trim() : ''
+    if (!query) return 'check_product needs a query'
+
+    // Read-only and scoped to THIS account's own Catálogo — a stranger
+    // can never use this to see another business's products or prices.
+    // The wildcard escape below keeps a customer-typed % or , from
+    // turning into an unintended ilike/or pattern.
+    const escaped = query.replace(/[%,]/g, '')
+    const { data: products } = await db
+      .from('products')
+      .select('name, category, price, currency, stock_quantity, track_stock, low_stock_threshold')
+      .eq('account_id', ctx.accountId)
+      .eq('is_active', true)
+      .or(`name.ilike.%${escaped}%,category.ilike.%${escaped}%`)
+      .limit(5)
+    if (!products || products.length === 0) return `no active products match "${query}"`
+
+    return products
+      .map((p) => {
+        const availability = !p.track_stock
+          ? 'made to order'
+          : p.stock_quantity <= 0
+            ? 'out of stock'
+            : p.stock_quantity <= p.low_stock_threshold
+              ? `low stock (${p.stock_quantity} left)`
+              : `in stock (${p.stock_quantity})`
+        const label = p.category ? `${p.name} [${p.category}]` : p.name
+        return `${label} — ${formatCurrency(p.price, p.currency)}, ${availability}`
+      })
+      .join('; ')
   },
 }
 
