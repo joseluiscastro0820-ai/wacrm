@@ -22,6 +22,7 @@ import {
   Plus,
   MessageSquareDashed,
   Zap,
+  ShoppingBag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GatedButton } from "@/components/ui/gated-button";
@@ -53,8 +54,10 @@ import {
   blankButtonsPayload,
 } from "@/components/interactive/interactive-builder";
 import { validateInteractivePayload } from "@/lib/whatsapp/interactive";
-import type { InteractiveMessagePayload, QuickReply } from "@/types";
+import type { InteractiveMessagePayload, Product, QuickReply } from "@/types";
 import { QuickReplyPicker } from "./quick-reply-picker";
+import { CatalogPicker } from "./catalog-picker";
+import { formatCurrency } from "@/lib/currency";
 
 /** Media content types an agent can send from the composer. */
 export type ComposerMediaKind = "image" | "video" | "document" | "audio";
@@ -154,6 +157,7 @@ export function MessageComposer({
     useState<InteractiveMessagePayload>(blankButtonsPayload);
   const [savingQuickReply, setSavingQuickReply] = useState(false);
   const [quickReplyOpen, setQuickReplyOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
 
   // Media attachment state. `draft` holds an uploaded-but-not-yet-sent
   // attachment; `busy` covers the upload/transcode window.
@@ -379,6 +383,45 @@ export function MessageComposer({
       });
     },
     [openInteractiveBuilder, adjustHeight],
+  );
+
+  // A picked catalog product: with an image, stage it as a media draft
+  // (same preview/caption/send flow as an attached photo — `path: ""`
+  // means discarding it never tries to GC a chat-media object, since
+  // the image lives in the product's own storage, not chat-media).
+  // Without an image, drop the product text into the composer like a
+  // quick reply so the agent can still review before sending.
+  const handlePickProduct = useCallback(
+    (product: Product) => {
+      setCatalogOpen(false);
+      const priceLine = formatCurrency(product.price, product.currency);
+      const body = product.description
+        ? `${product.name}\n${priceLine}\n${product.description}`
+        : `${product.name}\n${priceLine}`;
+      if (product.image_url) {
+        removeStaged(draftRef.current?.path);
+        setDraft({
+          kind: "image",
+          mediaUrl: product.image_url,
+          path: "",
+          filename: product.name,
+          caption: body,
+        });
+        return;
+      }
+      setText((prev) =>
+        prev && !/\s$/.test(prev) ? `${prev}\n${body}` : `${prev}${body}`,
+      );
+      requestAnimationFrame(() => {
+        adjustHeight();
+        const el = textareaRef.current;
+        if (el) {
+          el.focus();
+          el.setSelectionRange(el.value.length, el.value.length);
+        }
+      });
+    },
+    [removeStaged, adjustHeight],
   );
 
   // Upload a captured file to chat-media and stage it as a draft.
@@ -698,6 +741,10 @@ export function MessageComposer({
                 )}
                 {t("draftWithAI")}
               </DropdownMenuItem>
+              <DropdownMenuItem disabled={sessionExpired} onClick={() => setCatalogOpen(true)}>
+                <ShoppingBag className="mr-2 h-4 w-4" />
+                {t("catalog")}
+              </DropdownMenuItem>
               <DropdownMenuItem disabled={sessionExpired} onClick={() => openInteractiveBuilder()}>
                 <MessageSquareDashed className="mr-2 h-4 w-4" />
                 {t("interactiveMessage")}
@@ -793,6 +840,13 @@ export function MessageComposer({
         open={quickReplyOpen}
         onOpenChange={setQuickReplyOpen}
         onPick={handlePickQuickReply}
+      />
+
+      {/* Catalog picker — the "enviar catálogo" action Jose asked for. */}
+      <CatalogPicker
+        open={catalogOpen}
+        onOpenChange={setCatalogOpen}
+        onPick={handlePickProduct}
       />
     </div>
   );

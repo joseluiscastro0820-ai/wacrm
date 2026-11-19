@@ -40,7 +40,16 @@ type HandoffRow = Pick<
 
 type DispatchDeal = Pick<
   Deal,
-  "id" | "title" | "value" | "currency" | "in_process_at" | "dispatched_at" | "created_at"
+  | "id"
+  | "title"
+  | "value"
+  | "currency"
+  | "in_process_at"
+  | "dispatched_at"
+  | "created_at"
+  | "conversation_id"
+  | "contact_id"
+  | "order_code"
 > & { contact?: ContactLite };
 
 /**
@@ -111,7 +120,7 @@ export default function ActionsPage() {
     const { data, error } = await supabase
       .from("deals")
       .select(
-        "id, title, value, currency, in_process_at, dispatched_at, created_at, contact:contacts(name, phone)",
+        "id, title, value, currency, in_process_at, dispatched_at, created_at, conversation_id, contact_id, order_code, contact:contacts(name, phone)",
       )
       .eq("status", "won")
       .is("dispatched_at", null)
@@ -150,8 +159,35 @@ export default function ActionsPage() {
     await loadReturns();
   }
 
+  // Fire-and-forget WhatsApp notice to the CUSTOMER that their order's
+  // fulfillment status changed — a real gap Jose flagged: before this,
+  // "en proceso"/"despachado" only updated these two timestamps and the
+  // customer never heard about either. Mirrors the existing
+  // notify-deal-won / dispatch-terms pattern: reuses the dashboard's own
+  // `/api/whatsapp/send` route (role already gated to agent+ by
+  // `canAct` above), targets the deal's conversation when there is one
+  // (falling back to contact_id so a deal with no thread yet still
+  // find-or-creates one), and never blocks or surfaces its own errors —
+  // a WhatsApp hiccup must not undo the status change that already
+  // succeeded.
+  function notifyOrderStatus(deal: DispatchDeal, text: string) {
+    if (!deal.conversation_id && !deal.contact_id) return;
+    fetch("/api/whatsapp/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...(deal.conversation_id
+          ? { conversation_id: deal.conversation_id }
+          : { contact_id: deal.contact_id }),
+        message_type: "text",
+        content_text: text,
+      }),
+    }).catch(() => {});
+  }
+
   async function markInProcess(id: string) {
     setBusyId(id);
+    const deal = deals?.find((d) => d.id === id);
     const { error } = await supabase
       .from("deals")
       .update({ in_process_at: new Date().toISOString() })
@@ -160,6 +196,13 @@ export default function ActionsPage() {
     if (error) {
       toast.error(t("toastDealUpdateFailed"));
       return;
+    }
+    if (deal) {
+      const code = deal.order_code ? ` ${deal.order_code}` : "";
+      notifyOrderStatus(
+        deal,
+        `🛠️ Tu pedido${code} está en proceso: ya lo estamos preparando.`,
+      );
     }
     toast.success(t("toastMarkedInProcess"));
     await loadDeals();
@@ -182,6 +225,13 @@ export default function ActionsPage() {
     if (error) {
       toast.error(t("toastDealUpdateFailed"));
       return;
+    }
+    if (deal) {
+      const code = deal.order_code ? ` ${deal.order_code}` : "";
+      notifyOrderStatus(
+        deal,
+        `🚚 Tu pedido${code} fue despachado. ¡Pronto estará contigo!`,
+      );
     }
     toast.success(t("toastMarkedDispatched"));
     await loadDeals();

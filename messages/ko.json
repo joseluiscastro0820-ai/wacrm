@@ -300,7 +300,12 @@
       "send": "보내기",
       "quickReplyNamePrompt": "이 빠른 답장의 이름을 지정하세요:",
       "quickReplySaved": "빠른 답장으로 저장되었습니다.",
-      "quickReplySaveError": "빠른 답장을 저장하지 못했습니다."
+      "quickReplySaveError": "빠른 답장을 저장하지 못했습니다.",
+      "catalog": "카탈로그",
+      "catalogSearchPlaceholder": "제품 검색…",
+      "catalogEmpty": "아직 활성화된 카탈로그 제품이 없습니다.",
+      "catalogNoMatches": "검색과 일치하는 제품이 없습니다.",
+      "catalogOutOfStock": "품절"
     },
     "bubble": {
       "photo": "사진",

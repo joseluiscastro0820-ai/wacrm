@@ -314,7 +314,12 @@
       "send": "Enviar",
       "quickReplyNamePrompt": "Nombra esta respuesta rápida:",
       "quickReplySaved": "Guardada como respuesta rápida.",
-      "quickReplySaveError": "No se pudo guardar la respuesta rápida."
+      "quickReplySaveError": "No se pudo guardar la respuesta rápida.",
+      "catalog": "Catálogo",
+      "catalogSearchPlaceholder": "Buscar producto…",
+      "catalogEmpty": "Aún no hay productos activos en el catálogo.",
+      "catalogNoMatches": "Ningún producto coincide con la búsqueda.",
+      "catalogOutOfStock": "Agotado"
     },
     "bubble": {
       "photo": "Foto",

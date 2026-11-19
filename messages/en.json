@@ -314,7 +314,12 @@
       "send": "Send",
       "quickReplyNamePrompt": "Name this quick reply:",
       "quickReplySaved": "Saved as a quick reply.",
-      "quickReplySaveError": "Couldn't save the quick reply."
+      "quickReplySaveError": "Couldn't save the quick reply.",
+      "catalog": "Catalog",
+      "catalogSearchPlaceholder": "Search product…",
+      "catalogEmpty": "No active catalog products yet.",
+      "catalogNoMatches": "No products match that search.",
+      "catalogOutOfStock": "Out of stock"
     },
     "bubble": {
       "photo": "Photo",
