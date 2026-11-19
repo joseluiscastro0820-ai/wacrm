@@ -74,6 +74,8 @@ export function ContactDetailView({
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editCompany, setEditCompany] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editBankAccount, setEditBankAccount] = useState('');
   const [savingDetails, setSavingDetails] = useState(false);
 
   // Tags tab
@@ -113,6 +115,8 @@ export function ContactDetailView({
       setEditPhone(data.phone);
       setEditEmail(data.email ?? '');
       setEditCompany(data.company ?? '');
+      setEditAddress(data.address ?? '');
+      setEditBankAccount(data.bank_account ?? '');
     }
     setLoading(false);
   }, [contactId, supabase]);
@@ -211,6 +215,8 @@ export function ContactDetailView({
         phone: editPhone.trim(),
         email: editEmail.trim() || null,
         company: editCompany.trim() || null,
+        address: editAddress.trim() || null,
+        bank_account: editBankAccount.trim() || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', contactId);
@@ -518,6 +524,25 @@ export function ContactDetailView({
                     <Input
                       value={editCompany}
                       onChange={(e) => setEditCompany(e.target.value)}
+                      className="bg-muted border-border text-foreground h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-muted-foreground text-xs">{t('address')}</Label>
+                    <Textarea
+                      value={editAddress}
+                      onChange={(e) => setEditAddress(e.target.value)}
+                      placeholder={t('addressPlaceholder')}
+                      rows={2}
+                      className="bg-muted border-border text-foreground text-sm resize-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-muted-foreground text-xs">{t('bankAccount')}</Label>
+                    <Input
+                      value={editBankAccount}
+                      onChange={(e) => setEditBankAccount(e.target.value)}
+                      placeholder={t('bankAccountPlaceholder')}
                       className="bg-muted border-border text-foreground h-8 text-sm"
                     />
                   </div>

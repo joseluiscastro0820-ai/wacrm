@@ -143,6 +143,29 @@ describe('executeAiTool', () => {
     expect(dbObj.calls.some((c) => c.table === 'contacts')).toBe(true)
   })
 
+  it('update_contact_field: offers address (migration 048) as a writable built-in field', async () => {
+    const dbObj = mockDb({})
+    const result = await executeAiTool(
+      dbObj as never,
+      'update_contact_field',
+      { field: 'address', value: 'Calle 10 #5-20, Bogotá' },
+      CTX,
+    )
+    expect(result).toBe('address updated')
+    expect(dbObj.calls.some((c) => c.table === 'contacts')).toBe(true)
+  })
+
+  it('update_contact_field: refuses bank_account — human-entered only, never from chat', async () => {
+    const db = mockDb({}) as never
+    const result = await executeAiTool(
+      db,
+      'update_contact_field',
+      { field: 'bank_account', value: '1234567890' },
+      CTX,
+    )
+    expect(result).toContain('not writable')
+  })
+
   it('update_contact_field: refuses a custom field id from another account', async () => {
     const db = mockDb({ custom_fields: { data: null, error: null } }) as never
     const result = await executeAiTool(

@@ -10,6 +10,7 @@ import type { Contact, Deal, DealItem, ContactNote, Tag } from "@/types";
 import {
   Phone,
   Mail,
+  MapPin,
   Copy,
   Check,
   User,
@@ -253,6 +254,13 @@ export function ContactSidebar({ contact, conversationId }: ContactSidebarProps)
               <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground">
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 <span className="truncate">{contact.email}</span>
+              </div>
+            )}
+
+            {contact.address && (
+              <div className="flex items-start gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="whitespace-pre-wrap">{contact.address}</span>
               </div>
             )}
           </div>

@@ -58,7 +58,13 @@ export interface ToolContext {
   conversationId: string
 }
 
-const BUILTIN_CONTACT_FIELDS = new Set(['name', 'email', 'company'])
+// 'address' (migration 048) is deliberately the only other contact
+// column offered here besides the original three — a delivery address
+// the customer states in chat is genuinely useful for Pedidos to act
+// on. 'bank_account' (same migration) is NOT offered: there's no
+// legitimate reason a customer would need to state their own bank
+// account over chat, so that stays human-entered-only from Contacts.
+const BUILTIN_CONTACT_FIELDS = new Set(['name', 'email', 'company', 'address'])
 
 /**
  * Builds this account's tool catalog, with enums filled from its real
@@ -102,7 +108,7 @@ export async function buildAiTools(db: SupabaseClient, accountId: string): Promi
   ].join('; ')
   tools.push({
     name: 'update_contact_field',
-    description: `Update a fact about the contact when the customer states it in the conversation (their name, email, company, or a custom field). Available fields (value for "field" = what it stores): ${fieldHelp}`,
+    description: `Update a fact about the contact when the customer states it in the conversation (their name, email, company, delivery address, or a custom field). Available fields (value for "field" = what it stores): ${fieldHelp}`,
     parameters: {
       type: 'object',
       properties: {

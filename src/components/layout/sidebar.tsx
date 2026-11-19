@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Package,
   Radio,
+  Receipt,
   Settings,
   Shield,
   Undo2,
@@ -137,6 +138,12 @@ const navItems: NavItem[] = [
     labelKey: "pipelines",
     icon: GitBranch,
     iconBg: "bg-cyan-500/15 text-cyan-400",
+  },
+  {
+    href: "/billing",
+    labelKey: "billing",
+    icon: Receipt,
+    iconBg: "bg-yellow-500/15 text-yellow-400",
   },
   {
     href: "/catalog",

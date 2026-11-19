@@ -107,6 +107,14 @@ export interface Contact {
   name?: string;
   email?: string;
   company?: string;
+  /** Delivery address, in the customer's own words — free text, no
+   *  structured street/city/zip (migration 048). Also offered to the
+   *  AI's `update_contact_field` tool so it can save one the customer
+   *  states in chat. */
+  address?: string | null;
+  /** For sending a devolución refund back to the customer (migration
+   *  048). Human-entered only — never offered to the AI. */
+  bank_account?: string | null;
   avatar_url?: string;
   created_at: string;
   updated_at: string;
@@ -510,6 +518,16 @@ export interface Deal {
   in_process_at?: string | null;
   /** Cuándo se marcó el pedido "despachado" (enviado). Null = aún no. Ver página Acciones. */
   dispatched_at?: string | null;
+  /** Short customer-facing receipt code ("AF-0001"), assigned once the
+   *  first time a deal is marked "won" (migration 046). Null until then. */
+  order_code?: string | null;
+  /** Set only when the AI's `cancel_order` tool cancels an order — lets
+   *  Facturación/Acciones distinguish that from a human marking a deal
+   *  "lost" for any other reason (migration 046). Null otherwise. */
+  cancelled_by?: 'ai' | 'agent' | null;
+  /** Why the customer wanted to cancel, gathered by the AI's
+   *  `cancel_order` tool (migration 046). Null otherwise. */
+  cancellation_reason?: string | null;
   created_at: string;
   updated_at?: string;
   contact?: Contact;

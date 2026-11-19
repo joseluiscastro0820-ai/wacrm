@@ -55,6 +55,8 @@ export function ContactForm({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState('');
+  const [address, setAddress] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Duplicate-phone detection for NEW contacts. `exact` (same digits)
@@ -76,6 +78,8 @@ export function ContactForm({
       setPhone(contact?.phone ?? '');
       setEmail(contact?.email ?? '');
       setCompany(contact?.company ?? '');
+      setAddress(contact?.address ?? '');
+      setBankAccount(contact?.bank_account ?? '');
       setSelectedTagIds(contactTags.map((ct) => ct.tag_id));
       setDupMatch(null);
       fetchTags();
@@ -157,6 +161,8 @@ export function ContactForm({
             phone: phone.trim(),
             email: email.trim() || null,
             company: company.trim() || null,
+            address: address.trim() || null,
+            bank_account: bankAccount.trim() || null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', contactId);
@@ -171,6 +177,8 @@ export function ContactForm({
             phone: phone.trim(),
             email: email.trim() || null,
             company: company.trim() || null,
+            address: address.trim() || null,
+            bank_account: bankAccount.trim() || null,
           })
           .select('id')
           .single();
@@ -319,6 +327,32 @@ export function ContactForm({
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               placeholder={t('companyPlaceholder')}
+              className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cf-address" className="text-muted-foreground">
+              {t('addressLabel')}
+            </Label>
+            <Input
+              id="cf-address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder={t('addressPlaceholder')}
+              className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cf-bank-account" className="text-muted-foreground">
+              {t('bankAccountLabel')}
+            </Label>
+            <Input
+              id="cf-bank-account"
+              value={bankAccount}
+              onChange={(e) => setBankAccount(e.target.value)}
+              placeholder={t('bankAccountPlaceholder')}
               className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
             />
           </div>
