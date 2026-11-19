@@ -287,7 +287,7 @@
       "noCustomerMessages": "Sin mensajes del cliente"
     },
     "composer": {
-      "draftHint": "Toca el ✨ para redactar una respuesta con IA — puedes editarla antes de enviarla",
+      "draftHint": "Abre + y elige \"Redactar con IA\" para generar una respuesta — puedes editarla antes de enviarla",
       "sessionExpiredHint": "La sesión de 24 horas expiró. Usa una plantilla para retomar el contacto.",
       "templates": "Plantillas",
       "readOnlyPlaceholder": "Solo lectura — los visores pueden ver pero no responder",

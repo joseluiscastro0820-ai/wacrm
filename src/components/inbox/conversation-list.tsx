@@ -407,7 +407,7 @@ export function ConversationList({
             <p className="text-sm text-muted-foreground">{t("noConversations")}</p>
           </div>
         ) : (
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-2 p-2">
             {filtered.map((conv) => (
               <ConversationItem
                 key={conv.id}
@@ -457,8 +457,11 @@ function ConversationItem({
     <button
       onClick={handleClick}
       className={cn(
-        "flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/50",
-        isActive && "border-l-2 border-primary bg-muted/70"
+        // Each conversation reads as its own card — rounded, bordered,
+        // spaced from its neighbors (the gap-2/p-2 on the list wrapper
+        // above) — rather than a flat row only set off by hover state.
+        "flex w-full items-start gap-3 rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-left shadow-sm transition-colors hover:border-border hover:bg-muted/50",
+        isActive && "border-primary/50 bg-primary/5 hover:bg-primary/10"
       )}
     >
       {/* Avatar */}
